@@ -68,7 +68,7 @@
         .sandbox-toggle { user-select: none; background: #fff; border: 2px solid #a855f7; color: #9333ea; padding: 8px 16px; border-radius: 14px; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 0.8rem; text-transform: uppercase; box-shadow: 0 4px 10px rgba(147, 51, 234, 0.1);}
         .sandbox-toggle:hover { background: #9333ea; color: white; box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3); }
 
-        /* Gear Dropdown (UNIVERSAL) */
+        /* Gear Dropdown (UNIVERSAL - DESKTOP & MOBILE) */
         .gear-container { display: block; position: relative; }
         .gear-btn { user-select: none; background: rgba(255,255,255,0.9); border: 1px solid var(--border); border-radius: 14px; width: 38px; height: 38px; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .gear-btn:active { transform: rotate(45deg) scale(0.95); }
@@ -234,7 +234,7 @@
             .header-controls { 
                 position: fixed; 
                 bottom: 0; left: 0; right: 0; top: auto; 
-                margin: 0; padding: 10px 5px 25px 5px; 
+                margin: 0; padding: 10px 5px 25px 5px; /* iOS safe area */
                 border-radius: 0; border-top: 1px solid var(--border); 
                 background: rgba(248, 250, 252, 0.95); box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
                 justify-content: space-around; z-index: 1000; 
@@ -527,11 +527,11 @@
 
     // LIVE STATE
     let isSandbox = false;
-    let realStartBal = parseFloat(localStorage.getItem('apexStartV37')) || 9000;
-    let realIncomes = JSON.parse(localStorage.getItem('apexIncV37')) || JSON.parse(JSON.stringify(defaultIncomes));
-    let realExpenses = JSON.parse(localStorage.getItem('apexExpV37')) || JSON.parse(JSON.stringify(defaultExpenses));
-    let realLedger = JSON.parse(localStorage.getItem('apexLedV37')) || JSON.parse(JSON.stringify(defaultLedger));
-    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV37')) || JSON.parse(JSON.stringify(defaultVaults));
+    let realStartBal = parseFloat(localStorage.getItem('apexStartV38')) || 9000;
+    let realIncomes = JSON.parse(localStorage.getItem('apexIncV38')) || JSON.parse(JSON.stringify(defaultIncomes));
+    let realExpenses = JSON.parse(localStorage.getItem('apexExpV38')) || JSON.parse(JSON.stringify(defaultExpenses));
+    let realLedger = JSON.parse(localStorage.getItem('apexLedV38')) || JSON.parse(JSON.stringify(defaultLedger));
+    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV38')) || JSON.parse(JSON.stringify(defaultVaults));
     
     let startBal = realStartBal;
     let incomes = realIncomes;
@@ -588,11 +588,11 @@
     // DATA MANAGEMENT
     function saveData() {
         if(isSandbox) return; 
-        localStorage.setItem('apexStartV37', startBal);
-        localStorage.setItem('apexIncV37', JSON.stringify(incomes));
-        localStorage.setItem('apexExpV37', JSON.stringify(expenses));
-        localStorage.setItem('apexLedV37', JSON.stringify(customLedger));
-        localStorage.setItem('apexVaultsV37', JSON.stringify(vaults));
+        localStorage.setItem('apexStartV38', startBal);
+        localStorage.setItem('apexIncV38', JSON.stringify(incomes));
+        localStorage.setItem('apexExpV38', JSON.stringify(expenses));
+        localStorage.setItem('apexLedV38', JSON.stringify(customLedger));
+        localStorage.setItem('apexVaultsV38', JSON.stringify(vaults));
     }
     
     // Manual Save Button Logic
@@ -609,20 +609,20 @@
         }
     }
 
-    // PERFECT 1-PAGE PROPOSAL PDF GENERATOR (STRICT TABLE LAYOUT)
+    // CURRENT-MONTH PROPOSAL PDF GENERATOR
     window.downloadPDF = function() {
         let btn = event.target;
         let oldText = btn.innerText;
         btn.innerText = "⏳ Generating...";
         
-        // Render Chart to Image
+        // Grab chart as image
         const chartCanvas = document.getElementById('balanceChart');
         const chartImg = chartCanvas ? chartCanvas.toDataURL('image/png', 1.0) : '';
         
         const pdfDiv = document.createElement('div');
-        // Force an exact 750px width for the PDF generator to prevent web-wrapping
-        pdfDiv.style.width = '750px'; 
-        pdfDiv.style.padding = '15px';
+        // Force an exact width that maps safely to 8.5x11
+        pdfDiv.style.width = '800px'; 
+        pdfDiv.style.padding = '30px';
         pdfDiv.style.fontFamily = 'Helvetica, Arial, sans-serif';
         pdfDiv.style.color = '#0f172a';
         pdfDiv.style.background = '#ffffff';
@@ -633,97 +633,116 @@
         let liveBalStr = document.getElementById('live-balance').innerText;
         let pennieBal = (63000 - penniePaidSoFar).toLocaleString(undefined, {maximumFractionDigits:0});
 
+        // Filter custom ledger for the CURRENT MONTH
+        let today = new Date();
+        let currentMonthNum = today.getMonth() + 1;
+        let currentYearNum = today.getFullYear();
+        let monthName = today.toLocaleString('default', { month: 'long' });
+        
+        let monthCustomLedger = customLedger.filter(c => {
+            let parts = c.date.split('-');
+            return parseInt(parts[0]) === currentYearNum && parseInt(parts[1]) === currentMonthNum;
+        });
+
+        // Fixed expenses split into TWO columns for better spacing
         let sortedExp = expenses.sort((a,b) => (a.day==="Weekly"?-1:b.day==="Weekly"?1:a.day-b.day));
-        // Split into 3 columns for extreme compactness to ensure it stays on 1 page
-        let third = Math.ceil(sortedExp.length / 3);
-        let col1 = sortedExp.slice(0, third);
-        let col2 = sortedExp.slice(third, third*2);
-        let col3 = sortedExp.slice(third*2);
+        let halfExp = Math.ceil(sortedExp.length / 2);
+        let leftExp = sortedExp.slice(0, halfExp);
+        let rightExp = sortedExp.slice(halfExp);
 
         const renderExpRow = (e) => `
             <tr>
-                <td style="padding: 3px 0; border-top: 1px solid #f1f5f9; color: #64748b; white-space: nowrap;">${e.day}</td>
-                <td style="padding: 3px 0; border-top: 1px solid #f1f5f9; font-weight: bold; white-space: nowrap;">${e.name}</td>
-                <td style="padding: 3px 0; border-top: 1px solid #f1f5f9; text-align: right; color: #f43f5e; white-space: nowrap;">-$${e.amt.toLocaleString()}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #f1f5f9; color: #64748b; white-space: nowrap;">${e.day}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #f1f5f9; font-weight: bold; white-space: nowrap;">${e.name}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #f1f5f9; text-align: right; color: #f43f5e; white-space: nowrap;">-$${e.amt.toLocaleString()}</td>
             </tr>
         `;
 
         let html = `
-            <table width="100%" style="border-bottom: 2px solid #4f46e5; margin-bottom: 10px;">
+            <table width="100%" style="border-bottom: 2px solid #4f46e5; margin-bottom: 20px;">
                 <tr>
-                    <td style="padding-bottom: 8px;">
-                        <h1 style="margin: 0; color: #4f46e5; font-size: 20px; font-weight: bold; letter-spacing: -0.5px;">BUDGET COMMANDER <span style="color: #8b5cf6;">// APEX</span></h1>
-                        <p style="margin: 2px 0 0 0; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Executive Financial Overview &nbsp;&bull;&nbsp; Generated: ${new Date().toLocaleDateString()}</p>
+                    <td style="padding-bottom: 10px;">
+                        <h1 style="margin: 0; color: #4f46e5; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">BUDGET COMMANDER <span style="color: #8b5cf6;">// APEX</span></h1>
+                        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Executive Financial Overview &nbsp;&bull;&nbsp; ${monthName} ${currentYearNum}</p>
                     </td>
                 </tr>
             </table>
 
-            <table width="100%" style="margin-bottom: 12px; text-align: center; border-collapse: separate; border-spacing: 6px 0;">
+            <table width="100%" style="margin-bottom: 20px; text-align: center; border-collapse: separate; border-spacing: 10px 0;">
                 <tr>
-                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #4f46e5; padding: 10px; width: 25%; border-radius: 4px;">
-                        <div style="font-size: 8px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Live Balance</div>
-                        <div style="font-size: 16px; color: #4f46e5; font-weight: bold;">${liveBalStr}</div>
+                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #4f46e5; padding: 12px; width: 25%; border-radius: 6px;">
+                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Live Balance</div>
+                        <div style="font-size: 18px; color: #4f46e5; font-weight: bold;">${liveBalStr}</div>
                     </td>
-                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #10b981; padding: 10px; width: 25%; border-radius: 4px;">
-                        <div style="font-size: 8px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Base Income</div>
-                        <div style="font-size: 16px; color: #10b981; font-weight: bold;">${baseIncStr}</div>
+                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #10b981; padding: 12px; width: 25%; border-radius: 6px;">
+                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Base Income</div>
+                        <div style="font-size: 18px; color: #10b981; font-weight: bold;">${baseIncStr}</div>
                     </td>
-                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #f43f5e; padding: 10px; width: 25%; border-radius: 4px;">
-                        <div style="font-size: 8px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Base Outflow</div>
-                        <div style="font-size: 16px; color: #f43f5e; font-weight: bold;">${baseExpStr}</div>
+                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #f43f5e; padding: 12px; width: 25%; border-radius: 6px;">
+                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Base Outflow</div>
+                        <div style="font-size: 18px; color: #f43f5e; font-weight: bold;">${baseExpStr}</div>
                     </td>
-                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #f59e0b; padding: 10px; width: 25%; border-radius: 4px;">
-                        <div style="font-size: 8px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Debt Eliminated</div>
-                        <div style="font-size: 16px; color: #f59e0b; font-weight: bold;">$${penniePaidSoFar.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #f59e0b; padding: 12px; width: 25%; border-radius: 6px;">
+                        <div style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Debt Eliminated</div>
+                        <div style="font-size: 18px; color: #f59e0b; font-weight: bold;">$${penniePaidSoFar.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
                     </td>
                 </tr>
             </table>
 
-            <div style="font-size: 11px; font-weight: bold; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-bottom: 6px;">365-Day Trajectory</div>
-            <div style="border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px; margin-bottom: 12px; text-align: center; background: #fff;">
-                <img src="${chartImg}" style="max-width: 100%; height: 130px; object-fit: contain;">
+            <h2 style="font-size: 13px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px;">365-Day Trajectory</h2>
+            <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 20px; text-align: center; background: #fff;">
+                <img src="${chartImg}" style="max-width: 100%; height: 140px; object-fit: contain;">
             </div>
 
-            <table width="100%" style="margin-bottom: 12px; border-collapse: collapse; font-size: 10px;">
-                <tr valign="top">
-                    <td width="48%" style="padding-right: 15px;">
-                        <div style="font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Debt Consolidation Matrix</div>
-                        <table width="100%" style="border-collapse: collapse; margin-bottom: 12px;">
-                            <tr><td style="padding: 3px 0; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">Pennie Consolidation Loan</td><td style="text-align: right; color: #4f46e5; font-weight: bold; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">$${pennieBal}</td></tr>
-                            <tr><td style="padding: 3px 0; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">Kiana's Credit Card</td><td style="text-align: right; color: #f43f5e; font-weight: bold; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">-$2,435/mo</td></tr>
-                            <tr><td style="padding: 3px 0; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">Nick's Credit Card</td><td style="text-align: right; color: #f43f5e; font-weight: bold; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">-$500/mo</td></tr>
+            <table width="100%" style="margin-bottom: 20px; border-collapse: collapse;">
+                <tr>
+                    <td style="width: 48%; vertical-align: top; padding-right: 2%;">
+                        <h2 style="font-size: 13px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Debt Consolidation Matrix</h2>
+                        <table width="100%" style="border-collapse: collapse; font-size: 12px; margin-bottom: 15px;">
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 6px 0;"><strong>Pennie Consolidation Loan</strong></td>
+                                <td style="padding: 6px 0; text-align: right; color: #4f46e5; font-weight: bold;">$${pennieBal}</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 6px 0;"><strong>Kiana's Credit Card</strong></td>
+                                <td style="padding: 6px 0; text-align: right; color: #f43f5e; font-weight: bold;">-$2,435/mo</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 6px 0;"><strong>Nick's Credit Card</strong></td>
+                                <td style="padding: 6px 0; text-align: right; color: #f43f5e; font-weight: bold;">-$500/mo</td>
+                            </tr>
                         </table>
 
-                        <div style="font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Goal Vaults</div>
-                        <table width="100%" style="border-collapse: collapse;">
+                        <h2 style="font-size: 13px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Goal Vaults</h2>
+                        <table width="100%" style="border-collapse: collapse; font-size: 12px;">
                             ${vaults.map(v => `
-                                <tr>
-                                    <td style="padding: 3px 0; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">${v.name}</td>
-                                    <td style="text-align: right; color: #10b981; font-weight: bold; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">$${v.saved.toLocaleString()} <span style="font-weight:normal; color:#94a3b8;">/ $${v.target.toLocaleString()}</span></td>
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 6px 0;"><strong>${v.name}</strong></td>
+                                    <td style="padding: 6px 0; text-align: right; color: #10b981; font-weight: bold;">$${v.saved.toLocaleString()} <span style="color:#94a3b8; font-weight:normal;">/ $${v.target.toLocaleString()}</span></td>
                                 </tr>
                             `).join('')}
                         </table>
                     </td>
-                    <td width="4%"></td>
-                    <td width="48%" style="padding-left: 15px; border-left: 1px solid #e2e8f0;">
-                        <div style="font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Income Engines</div>
-                        <table width="100%" style="border-collapse: collapse; margin-bottom: 12px;">
+                    <td style="width: 4%;"></td>
+                    <td style="width: 48%; vertical-align: top; padding-left: 2%;">
+                        <h2 style="font-size: 13px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Income Engines</h2>
+                        <table width="100%" style="border-collapse: collapse; font-size: 12px; margin-bottom: 15px;">
                             ${incomes.map(i => `
-                                <tr>
-                                    <td style="padding: 3px 0; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">${i.name}</td>
-                                    <td style="text-align: right; color: #10b981; font-weight: bold; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">$${i.amt.toLocaleString()}</td>
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 6px 0;"><strong>${i.name}</strong></td>
+                                    <td style="padding: 6px 0; text-align: right; color: #10b981; font-weight: bold;">$${i.amt.toLocaleString()}</td>
                                 </tr>
                             `).join('')}
                         </table>
 
-                        <div style="font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Custom Ledger Injections</div>
-                        <table width="100%" style="border-collapse: collapse;">
-                            ${customLedger.length === 0 ? '<tr><td style="padding: 3px 0; color: #64748b;">No custom data injected.</td></tr>' : ''}
-                            ${customLedger.slice(-6).reverse().map(c => `
-                                <tr>
-                                    <td style="padding: 3px 0; color: #64748b; border-bottom: 1px solid #f1f5f9; font-size:8px; white-space: nowrap;">${c.date}</td>
-                                    <td style="padding: 3px 0; font-weight: bold; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">${c.name}</td>
-                                    <td style="text-align: right; color: #f43f5e; font-weight: bold; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">-$${c.amt.toLocaleString()}</td>
+                        <h2 style="font-size: 13px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Custom Ledger (${monthName})</h2>
+                        <table width="100%" style="border-collapse: collapse; font-size: 12px;">
+                            ${monthCustomLedger.length === 0 ? '<tr><td style="padding: 6px 0; color: #64748b;">No data injected this month.</td></tr>' : ''}
+                            ${monthCustomLedger.slice(-5).reverse().map(c => `
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 6px 0; color: #64748b; width: 30%;">${c.date}</td>
+                                    <td style="padding: 6px 0;"><strong>${c.name}</strong></td>
+                                    <td style="padding: 6px 0; text-align: right; color: #f43f5e; font-weight: bold;">-$${c.amt.toLocaleString()}</td>
                                 </tr>
                             `).join('')}
                         </table>
@@ -731,27 +750,28 @@
                 </tr>
             </table>
 
-            <div style="font-size: 11px; font-weight: bold; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 6px;">Fixed Expense Ledger</div>
-            <table width="100%" style="border-collapse: collapse; font-size: 9px;">
-                <tr valign="top">
-                    <td width="32%" style="padding-right: 10px;">
-                        <table width="100%" style="border-collapse: collapse;">
-                            <tr style="color: #64748b; text-transform: uppercase;"><td style="padding-bottom: 2px;">Day</td><td style="padding-bottom: 2px;">Item</td><td style="text-align:right; padding-bottom: 2px;">Amt</td></tr>
-                            ${col1.map(renderExpRow).join('')}
+            <h2 style="font-size: 13px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Fixed Expense Ledger (Monthly)</h2>
+            <table width="100%" style="border-collapse: collapse;">
+                <tr>
+                    <td style="width: 48%; vertical-align: top; padding-right: 2%;">
+                        <table width="100%" style="border-collapse: collapse; font-size: 11px; text-align: left;">
+                            <tr style="background: #f1f5f9;">
+                                <th style="padding: 6px; border: 1px solid #e2e8f0;">Day</th>
+                                <th style="padding: 6px; border: 1px solid #e2e8f0;">Item Name</th>
+                                <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: right;">Amount</th>
+                            </tr>
+                            ${leftExp.map(renderExpRow).join('')}
                         </table>
                     </td>
-                    <td width="2%" style="border-right: 1px solid #e2e8f0;"></td>
-                    <td width="32%" style="padding: 0 10px;">
-                        <table width="100%" style="border-collapse: collapse;">
-                            <tr style="color: #64748b; text-transform: uppercase;"><td style="padding-bottom: 2px;">Day</td><td style="padding-bottom: 2px;">Item</td><td style="text-align:right; padding-bottom: 2px;">Amt</td></tr>
-                            ${col2.map(renderExpRow).join('')}
-                        </table>
-                    </td>
-                    <td width="2%" style="border-right: 1px solid #e2e8f0;"></td>
-                    <td width="32%" style="padding-left: 10px;">
-                        <table width="100%" style="border-collapse: collapse;">
-                            <tr style="color: #64748b; text-transform: uppercase;"><td style="padding-bottom: 2px;">Day</td><td style="padding-bottom: 2px;">Item</td><td style="text-align:right; padding-bottom: 2px;">Amt</td></tr>
-                            ${col3.map(renderExpRow).join('')}
+                    <td style="width: 4%;"></td>
+                    <td style="width: 48%; vertical-align: top; padding-left: 2%;">
+                        <table width="100%" style="border-collapse: collapse; font-size: 11px; text-align: left;">
+                            <tr style="background: #f1f5f9;">
+                                <th style="padding: 6px; border: 1px solid #e2e8f0;">Day</th>
+                                <th style="padding: 6px; border: 1px solid #e2e8f0;">Item Name</th>
+                                <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: right;">Amount</th>
+                            </tr>
+                            ${rightExp.map(renderExpRow).join('')}
                         </table>
                     </td>
                 </tr>
@@ -768,8 +788,8 @@
         wrapper.appendChild(pdfDiv);
 
         const opt = {
-            margin:       0.3,
-            filename:     `Budget_Commander_Overview_${new Date().toISOString().split('T')[0]}.pdf`,
+            margin:       0.4,
+            filename:     `Budget_Commander_${monthName}_${currentYearNum}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
