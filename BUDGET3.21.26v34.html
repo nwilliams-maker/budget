@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Budget Commander: Apex</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            /* LUCID GLASS PALETTE */
+            --bg-base: #f8fafc; 
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.08);
+            
+            --primary: #4f46e5; --primary-glow: rgba(79, 70, 229, 0.15);
+            --primary-light: #e0e7ff;
+            --secondary: #8b5cf6; 
+            
+            --success: #10b981; --success-glow: rgba(16, 185, 129, 0.15);
+            --success-light: #d1fae5;
+            
+            --danger: #f43f5e; --danger-glow: rgba(244, 63, 94, 0.15);
+            --danger-light: #ffe4e6;
+            
+            --warning: #f59e0b; --warning-glow: rgba(245, 158, 11, 0.15);
+            --warning-light: #fef3c7;
+            
+            --text-main: #0f172a; --text-sub: #64748b;
+            --border-light: rgba(15, 23, 42, 0.06);
+            --border: #e2e8f0;
+        }
+
+        /* Animated Environment */
+        body { margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-base); color: var(--text-main); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; transition: background 0.3s ease;}
+        body.sandbox-mode { background: #f3e8ff; }
+        
+        .bg-orbs { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; overflow: hidden; pointer-events: none; background: #f8fafc; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.6; animation: float 20s infinite ease-in-out alternate; }
+        .orb-1 { width: 50vw; height: 50vw; background: #bfdbfe; top: -10%; left: -10%; }
+        .orb-2 { width: 40vw; height: 40vw; background: #ddd6fe; bottom: -10%; right: -10%; animation-delay: -5s; }
+        .orb-3 { width: 30vw; height: 30vw; background: #a7f3d0; top: 40%; left: 40%; animation-delay: -10s; opacity: 0.4; }
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(5%, 10%) scale(1.1); } }
+
+        .container { max-width: 1400px; margin: auto; padding: 20px; position: relative; z-index: 1; padding-bottom: 60px; }
+
+        /* Glassmorphism Panels */
+        .glass-panel { background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 24px; box-shadow: var(--glass-shadow); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        
+        /* Interactive Card States */
+        .editable-card { cursor: pointer; position: relative; }
+        .editable-card::before { content: '✎ EDIT'; position: absolute; top: 12px; right: 12px; font-size: 0.65rem; font-weight: 800; color: var(--primary); opacity: 0; transition: 0.2s; letter-spacing: 1px; background: var(--primary-light); padding: 4px 8px; border-radius: 6px;}
+        .editable-card:hover { box-shadow: 0 15px 40px -10px rgba(79, 70, 229, 0.15); border-color: var(--primary); transform: translateY(-3px); }
+        .editable-card:hover::before { opacity: 1; }
+
+        /* Top HUD */
+        .hud-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;}
+        .sys-readout { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-sub); display: flex; flex-direction: column; gap: 5px; }
+        .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-weight: 800; font-size: 0.75rem; letter-spacing: 1px; }
+        .status-optimal { background: var(--success-light); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
+        .status-warning { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(244,63,94,0.2); animation: pulse 2s infinite; }
+
+        /* FLUID Summary Grid */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { padding: 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+        .stat-label { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 8px; line-height: 1.4; word-wrap: break-word; }
+        .stat-val { font-size: 1.7rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; transition: 0.3s; word-wrap: break-word; }
+        .stat-val.pop { transform: scale(1.05); color: var(--primary); }
+        .accent-bar { position: absolute; top: 0; left: 0; width: 5px; height: 100%; background: var(--primary); }
+
+        /* Sticky App Navigation */
+        .header-controls { position: sticky; top: 10px; z-index: 100; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px; background: rgba(248, 250, 252, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 10px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5); }
+        .tabs { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-grow: 1;}
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab-btn { user-select: none; scroll-snap-align: start; padding: 12px 18px; border-radius: 12px; border: none; background: transparent; cursor: pointer; font-weight: 800; color: var(--text-sub); transition: 0.3s; white-space: nowrap; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tab-btn:hover { color: var(--text-main); background: rgba(15,23,42,0.03); }
+        .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 15px var(--primary-glow); transform: translateY(-1px); }
+        
+        .sandbox-toggle { user-select: none; background: #fff; border: 2px solid #a855f7; color: #9333ea; padding: 10px 16px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 0.8rem; text-transform: uppercase;}
+        .sandbox-toggle:hover { background: #9333ea; color: white; box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3); }
+
+        /* Alerts */
+        #alert-banner { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(244,63,94,0.3); padding: 15px 20px; border-radius: 16px; margin-bottom: 20px; font-weight: 800; box-shadow: 0 4px 15px var(--danger-glow); animation: slideDown 0.5s ease; display: flex; align-items: center; justify-content: space-between;}
+        #sandbox-indicator { background: linear-gradient(90deg, #9333ea, #c084fc); color: white; padding: 12px; border-radius: 16px; margin-bottom: 20px; font-weight: 800; text-align: center; text-transform: uppercase; letter-spacing: 2px; box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        @keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Fluid Box Wrapping Fix */
+        .debt-header-wrap { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; width: 100%; }
+        .debt-title-box { flex: 1 1 250px; }
+        .debt-val-box { flex: 1 1 200px; text-align: right; min-width: 200px; }
+
+        @media (max-width: 600px) {
+            .card-split { flex-direction: column; align-items: flex-start; }
+            .card-split > div:last-child { text-align: left; margin-top: 5px; width: 100%; }
+        }
+
+        /* Layout Grid */
+        .layout-grid { display: grid; grid-template-columns: minmax(320px, 380px) 1fr; gap: 25px; }
+        .column-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
+        .column-title::before { content: ''; display: block; width: 8px; height: 8px; background: var(--primary); border-radius: 50%; box-shadow: 0 0 10px var(--primary-glow); }
+        
+        /* Interactive Cards */
+        .interactive-card { padding: 20px; margin-bottom: 15px; border-left: 4px solid var(--primary); }
+        
+        /* Tables */
+        .table-container { padding: 10px 25px 25px 25px; overflow-x: auto; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0 8px; min-width: 400px;}
+        th { text-align: left; padding: 10px; color: var(--text-sub); font-size: 0.7rem; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+        td { padding: 15px 12px; background: rgba(255,255,255,0.5); border: 1px solid var(--border-light); font-size: 0.9rem; font-weight: 700; transition: 0.2s; word-wrap: break-word;}
+        tr td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; border-left: 1px solid var(--border-light); }
+        tr td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; border-right: 1px solid var(--border-light); }
+        tr:hover td { background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        
+        /* In-Table Editing */
+        .editable { cursor: pointer; color: var(--primary); font-family: 'JetBrains Mono', monospace; position: relative; }
+        .editable::before { content: '✎'; position: absolute; right: 5px; opacity: 0; transition: 0.2s; font-size: 0.8rem; background: var(--primary-light); padding: 2px 4px; border-radius: 4px; font-family: 'Plus Jakarta Sans', sans-serif;}
+        .editable:hover::before { opacity: 1; transform: translateX(-5px); }
+
+        /* Forms */
+        .form-row { display: grid; grid-template-columns: 1fr 2fr 1fr auto; gap: 10px; align-items: center; padding: 15px 0; border-top: 1px solid var(--border); min-width: 500px;}
+        input[type="text"], input[type="number"], input[type="date"] { padding: 14px 15px; border-radius: 12px; border: 1px solid var(--border); background: #fff; color: var(--text-main); font-family: 'Plus Jakarta Sans', inherit; font-size: 0.95rem; font-weight: 600; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+        .btn { user-select: none; padding: 14px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; border: none; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-success { background: var(--success); color: #fff; box-shadow: 0 4px 15px var(--success-glow); } 
+        .btn-success:hover { background: #059669; transform: translateY(-2px); }
+        .btn-danger { background: var(--danger-light); color: var(--danger); padding: 8px 12px; } 
+        .btn-danger:hover { background: var(--danger); color: white; box-shadow: 0 4px 15px var(--danger-glow); }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px var(--primary-glow);}
+        .btn-primary:hover { background: #4338ca; transform: translateY(-2px); }
+
+        /* Command Strips */
+        .month-header-strip { padding: 25px; margin: 40px 0 20px 0; display: flex; flex-direction: column; gap: 20px; border-left: 6px solid var(--primary); }
+        .month-header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .month-title { font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: 1px; text-transform: uppercase; line-height: 1.2;}
+        .cs-chip { padding: 8px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; background: #fff; border: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 8px;}
+        
+        .cs-util-wrapper { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 15px; background: rgba(15,23,42,0.02); padding: 15px 20px; border-radius: 14px; border: 1px solid var(--border-light); }
+        .cs-util-label { font-size: 0.75rem; font-weight: 800; color: var(--text-sub); letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;}
+        .cs-bar-bg { width: 100%; height: 12px; background: var(--border); border-radius: 10px; overflow: hidden; position: relative; }
+        .cs-bar-fill { height: 100%; background: linear-gradient(90deg, #60a5fa, #4f46e5); transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 10px; }
+        .cs-bar-fill.high { background: linear-gradient(90deg, #fcd34d, #d97706); }
+        .cs-bar-fill.critical { background: linear-gradient(90deg, #fb7185, #e11d48); }
+        .cs-util-val { font-size: 1.1rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace; width: 55px; text-align: right; }
+
+        /* Calendar Mobile Scroll Fix */
+        .calendar-wrapper { width: 100%; overflow-x: auto; padding-bottom: 20px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+        .calendar-wrapper::-webkit-scrollbar { height: 6px; }
+        .calendar-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .calendar-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 10px; min-width: 900px; }
+        .cal-header { text-align: center; font-weight: 800; font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; padding-bottom: 10px; letter-spacing: 1px; }
+        .cal-day { background: #fff; border-radius: 16px; padding: 12px; border: 1px solid var(--border); min-height: 130px; display: flex; flex-direction: column; transition: 0.2s; scroll-snap-align: start; box-shadow: 0 2px 5px rgba(0,0,0,0.01);}
+        .cal-day:hover { border-color: var(--primary); box-shadow: 0 8px 20px var(--primary-light); transform: translateY(-2px); z-index: 2;}
+        .cal-day.empty { background: transparent; border: none; box-shadow: none; pointer-events: none; }
+        .cal-day.past { opacity: 0.4; pointer-events: none; background: #f8fafc; border: 1px dashed var(--border); }
+        .cal-num { font-weight: 800; font-size: 0.9rem; color: var(--text-sub); margin-bottom: 10px; }
+        .cal-bal { font-size: 1rem; font-weight: 800; color: var(--text-main); text-align: right; margin-top: auto; font-family: 'JetBrains Mono', monospace; }
+        
+        .event { font-size: 0.7rem; padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
+        .ev-inc { background: var(--success-light); color: #047857; }
+        .ev-exp { background: var(--danger-light); color: #be123c; }
+        .ev-custom { background: var(--primary-light); color: var(--primary-dark); border-left: 3px solid var(--primary); }
+        .ev-mortgage { background: var(--warning-light); color: var(--warning); border-left: 3px solid var(--warning); }
+
+        /* Pennie Energy Bar */
+        .energy-progress-container { background: var(--border); border-radius: 12px; height: 24px; width: 100%; overflow: hidden; margin: 20px 0; }
+        .energy-progress-bar { 
+            height: 100%; 
+            background: linear-gradient(90deg, #60a5fa, #c084fc, #f43f5e, #60a5fa); 
+            background-size: 300% 100%;
+            animation: energyFlow 4s linear infinite;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+        }
+        @keyframes energyFlow { 0% { background-position: 0% 0%; } 100% { background-position: 100% 0%; } }
+
+        /* Vaults */
+        .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .vault-card { padding: 25px; border-top: 5px solid var(--success); cursor: pointer; position: relative;}
+        .vault-card::before { content: '✎ EDIT'; position: absolute; top: 12px; right: 12px; font-size: 0.65rem; font-weight: 800; color: var(--success); opacity: 0; transition: 0.2s; letter-spacing: 1px; background: var(--success-light); padding: 4px 8px; border-radius: 6px;}
+        .vault-card:hover { border-color: var(--success); transform: translateY(-3px); box-shadow: 0 10px 30px var(--success-glow); }
+        .vault-card:hover::before { opacity: 1; }
+        .vault-bar-bg { background: var(--border); border-radius: 10px; height: 14px; width: 100%; overflow: hidden; margin: 0;}
+        .vault-bar-fill { height: 100%; background: linear-gradient(90deg, #34d399, #10b981); }
+
+        /* Charts */
+        .chart-wrapper { padding: 25px; height: 500px; width: 100%; }
+        
+        /* Slider */
+        .slider-container { background: #f8fafc; padding: 25px; border-radius: 16px; border: 1px solid var(--border); margin-top: 25px;}
+        input[type=range] { width: 100%; margin: 20px 0; cursor: pointer; accent-color: var(--primary); }
+        
+        /* Mobile Hints */
+        .mobile-hint { display: none; font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-top: -10px; margin-bottom: 15px; font-weight: 800; animation: pulse 2s infinite;}
+
+        .hidden { display: none !important; }
+
+        /* FLUID RESPONSIVE BREAKPOINTS */
+        @media (max-width: 1024px) {
+            .layout-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            body { padding: 15px; }
+            .mobile-hint { display: block; }
+            .form-row { grid-template-columns: 1fr; gap: 15px; min-width: 100%;}
+            .hud-header { flex-direction: column; align-items: center; text-align: center; }
+            .month-header-top { flex-direction: column; align-items: flex-start; }
+            .month-stats { flex-direction: column; width: 100%; }
+            .cs-chip { justify-content: space-between; }
+            .stat-card { padding: 15px; }
+            .stat-val { font-size: 1.5rem; }
+            .tabs { padding-bottom: 5px; }
+            .tab-btn { padding: 10px 14px; font-size: 0.8rem; }
+        }
+        @media (max-width: 600px) {
+            .debt-val-box { text-align: left !important; margin-top: 10px; width: 100%; }
+        }
+        @media (max-width: 480px) {
+            .interactive-card, .table-container, .month-header-strip, .vault-card, .chart-wrapper, .debt-card { padding: 15px; }
+            .column-title { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+
+<div class="container">
+    
+    <div class="hud-header">
+        <div class="sys-readout">
+            <span style="font-weight: 800; font-size: 1.2rem; color: var(--text-main); letter-spacing: -0.5px;">BUDGET_COMMANDER <span style="color:var(--primary);">// APEX</span></span>
+            <span id="sys-date">SYS.DATE: SCANNING...</span>
+        </div>
+        <div id="sys-status" class="status-chip status-optimal">● STATUS: OPTIMAL</div>
+    </div>
+
+    <div id="alert-banner" class="glass-panel hidden"></div>
+    <div id="sandbox-indicator" class="hidden">🧪 QUANTUM SANDBOX ACTIVE: Edits will not be saved.</div>
+
+    <div class="summary-grid">
+        <div class="stat-card glass-panel editable-card" style="border-left: 5px solid var(--primary);" onclick="editStartBal()">
+            <div class="stat-label">Live Estimated Balance</div>
+            <div class="stat-val" id="live-balance" style="color: var(--primary);">$9,000</div>
+        </div>
+        <div class="stat-card glass-panel" style="border-left: 5px solid var(--success);">
+            <div class="stat-label">Baseline Monthly Income</div>
+            <div class="stat-val" id="sum-inc" style="color: var(--success);">$11,049</div>
+        </div>
+        <div class="stat-card glass-panel" style="border-left: 5px solid var(--danger);">
+            <div class="stat-label">Baseline Base Outflow</div>
+            <div class="stat-val" id="sum-exp" style="color: var(--danger);">$11,254</div>
+        </div>
+        <div class="stat-card glass-panel" style="border-left: 5px solid var(--warning);">
+            <div class="stat-label">Pennie Debt Eliminated</div>
+            <div class="stat-val" id="sum-debt-paid" style="color: var(--warning);">$3,666</div>
+        </div>
+    </div>
+
+    <div class="header-controls">
+        <div class="tabs">
+            <button id="tab-dash" class="tab-btn active" onclick="switchTab('dashboard')">⌘ Control Panel</button>
+            <button id="tab-cal" class="tab-btn" onclick="switchTab('calendar')">📅 Forecast</button>
+            <button id="tab-vault" class="tab-btn" onclick="switchTab('vault')">🏦 Goal Vaults</button>
+            <button id="tab-chart" class="tab-btn" onclick="switchTab('chart')">📈 Analytics</button>
+            <button id="tab-debt" class="tab-btn" onclick="switchTab('debt')">🎯 Consolidation</button>
+        </div>
+        <button class="sandbox-toggle glass-panel" onclick="toggleSandbox()">
+            <span id="sandbox-icon">▶</span> Sandbox
+        </button>
+    </div>
+
+    <div id="view-dashboard" class="layout-grid">
+        <div>
+            <div class="column-title">Income Engines</div>
+            <div id="income-list-container">
+                </div>
+
+            <div class="column-title" style="margin-top: 40px;">System Settings</div>
+            <div class="glass-panel" style="padding: 20px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" style="flex:1;" onclick="exportData()">💾 Backup</button>
+                    <label class="btn" style="flex:1; text-align:center; background: #fff; color: var(--text-main); border: 1px solid var(--border); cursor: pointer;">
+                        📂 Restore <input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none;">
+                    </label>
+                </div>
+                <button class="btn" style="width: 100%; justify-content:center; background: var(--danger-light); border: 1px solid rgba(244,63,94,0.2); color: var(--danger);" onclick="resetData()">⚠ Factory Reset</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="column-title">Expense Matrix & Reality Ledger</div>
+            <div class="table-container glass-panel">
+                <table>
+                    <thead><tr><th>Day</th><th>Item Name</th><th style="text-align: right">Monthly Amount</th></tr></thead>
+                    <tbody id="expense-list"></tbody>
+                </table>
+                
+                <h4 style="margin-top: 30px; color:var(--primary); padding-top:20px; border-top: 2px solid var(--border-light); font-size: 0.95rem; text-transform: uppercase;">Inject Custom Data</h4>
+                <div style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 15px;">Name transaction <strong style="color:var(--danger)">"Pennie Extra"</strong> for debt, or <strong style="color:var(--success)">"Vault: [Name]"</strong> for savings!</div>
+                
+                <div class="form-row">
+                    <input type="date" id="cust-date" required>
+                    <input type="text" id="cust-name" placeholder="Item Name..." required>
+                    <input type="number" id="cust-amt" placeholder="Amount ($)" required>
+                    <button class="btn btn-success" onclick="addCustomTransaction()">INJECT</button>
+                </div>
+                
+                <table style="margin-top: 10px;">
+                    <tbody id="custom-ledger-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-calendar" class="hidden">
+        <div class="mobile-hint">⟷ Swipe calendar to view full week ⟷</div>
+        <div id="calendar-body"></div>
+    </div>
+
+    <div id="view-vault" class="hidden">
+        <div class="column-title">Sinking Funds & Liquidity Vaults</div>
+        <div style="margin-bottom: 25px; font-size: 0.95rem; color: var(--text-sub); line-height: 1.5;">
+            Protect your surplus. Inject a custom transaction named <strong>"Vault: Emergency Fund"</strong> on the Dashboard to secure cash here. <br><strong style="color: var(--primary)">Click any vault below to edit its target or delete it.</strong>
+        </div>
+        <div class="vault-grid" id="vault-list"></div>
+    </div>
+
+    <div id="view-chart" class="hidden">
+        <div class="column-title">Full-Spectrum Trajectory</div>
+        <p style="font-size: 0.85rem; color: var(--text-sub); margin-top: -10px; margin-bottom: 15px;">
+            Dashed Orange Line represents your $4,000 Danger Zone floor.
+        </p>
+        <div class="chart-wrapper glass-panel">
+            <canvas id="balanceChart"></canvas>
+        </div>
+    </div>
+
+    <div id="view-debt" class="hidden">
+        <div class="column-title">Consolidation Matrix</div>
+        
+        <div class="debt-card glass-panel" style="border-top: 5px solid var(--primary); margin-bottom: 25px; padding: 30px;">
+            <div class="debt-header-wrap">
+                <div class="debt-title-box">
+                    <strong style="font-size: 1.6rem; line-height: 1.3; display: block;">Pennie Consolidation Loan</strong>
+                    <div style="font-size: 0.9rem; color: var(--text-sub); margin-top: 8px; line-height: 1.5;">Original Principal: $120,000. Consolidated to $63,000.</div>
+                </div>
+                <div class="debt-val-box">
+                    <span style="font-size: 0.8rem; color: var(--text-sub); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Live Remaining Balance</span><br>
+                    <span style="font-weight:800; color:var(--primary); font-size: 2.6rem; font-family: 'JetBrains Mono', monospace;" id="pennie-live-balance">$63,000</span>
+                </div>
+            </div>
+            
+            <div class="energy-progress-container" style="margin: 25px 0;">
+                <div class="energy-progress-bar" id="pennie-progress" style="width: 0%;"></div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; font-size: 0.85rem; color: var(--text-sub); font-weight: 800; text-transform: uppercase;">
+                <span>Base: $63,000</span>
+                <span id="pennie-paid" style="color: var(--success);">Paid: $0</span>
+            </div>
+            
+            <div class="slider-container">
+                <strong style="font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">⚡ SNOWBALL ACCELERATOR</strong>
+                <p style="font-size: 0.85rem; color: var(--text-sub); margin-top: 5px;">Slide to simulate adding extra surplus cash every month.</p>
+                <div style="display:flex; justify-content:space-between; font-weight:800; font-family:'JetBrains Mono', monospace; margin-top: 15px; color: var(--text-sub);">
+                    <span>+$0</span><span id="slider-display" style="color:var(--primary); font-size:1.3rem;">+$0 /mo</span><span>+$2,000</span>
+                </div>
+                <input type="range" id="debt-slider" min="0" max="2000" step="50" value="0" oninput="updateSnowball()">
+                <div id="snowball-result" style="background: #fff; padding: 15px; border-radius: 12px; font-weight: 700; margin-top: 15px; border: 1px solid var(--border); font-size: 0.95rem; line-height: 1.4;">
+                    Base Timeline: At $1,400/mo, you will be debt-free in ~43 months.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Init Date Readout
+    const dateOpts = { year: 'numeric', month: '2-digit', day: '2-digit' };
+    document.getElementById('sys-date').innerText = "SYS.DATE: " + new Date().toLocaleDateString('en-ZA', dateOpts).replace(/\//g, '.');
+
+    // System Anchors
+    const nickAnchorDate = new Date(2026, 2, 20, 12, 0, 0); 
+    const kianaAnchorDate = new Date(2026, 2, 21, 12, 0, 0); 
+    const mortgageAnchorDate = new Date(2026, 4, 2, 12, 0, 0); 
+    
+    // ==========================================
+    // FULLY INTERACTIVE DATA STATE (V25 Update - $4k Danger Zone)
+    // ==========================================
+    
+    const defaultIncomes = [
+        { id: "nick", name: "Nick (Bi-Weekly)", amt: 2374.50, desc: "Anchors: Fri, Mar 20. Pays every 14 days." },
+        { id: "va", name: "VA Income (1st)", amt: 4500, desc: "Pays on the 1st of every month." },
+        { id: "kiana", name: "Kiana (Weekly)", amt: 450, desc: "Anchors: Saturdays. Pays every 7 days." }
+    ];
+
+    const defaultExpenses = [
+        { day: "Weekly", name: "Kiana's CC", amt: 2435 }, 
+        { day: "Weekly", name: "Nick's CC", amt: 500 }, 
+        { day: 1, name: "Best Buy", amt: 280 },
+        { day: 1, name: "Dentist", amt: 110 },
+        { day: 1, name: "Ethos Life", amt: 158 },
+        { day: 3, name: "Cell phone", amt: 106 },
+        { day: 3, name: "Internet", amt: 95 },
+        { day: 5, name: "ADT", amt: 46 },
+        { day: 12, name: "Sienna Car", amt: 1011 },
+        { day: 12, name: "Pennie Loan", amt: 700 },
+        { day: 15, name: "Auto Ins", amt: 151 },
+        { day: 15, name: "SunRun", amt: 73 },
+        { day: 17, name: "Gas", amt: 200 },       
+        { day: 20, name: "Electric", amt: 25 },    
+        { day: 24, name: "Water", amt: 120 },      
+        { day: 26, name: "Crown Car", amt: 1100 },
+        { day: 26, name: "Pennie Loan", amt: 700 }
+    ];
+
+    const defaultVaults = [
+        { name: "Emergency Fund", target: 10000, saved: 0 },
+        { name: "Vacation", target: 3000, saved: 0 }
+    ];
+
+    const defaultLedger = [
+        { date: "2026-03-22", name: "Kiana's CC Extra", amt: 600 },
+        { date: "2026-03-27", name: "Kiana's CC Extra", amt: 600 },
+        { date: "2026-03-22", name: "Nick's CC Extra", amt: 585 }
+    ];
+
+    // LIVE STATE
+    let isSandbox = false;
+    let realStartBal = parseFloat(localStorage.getItem('apexStartV25')) || 9000;
+    let realIncomes = JSON.parse(localStorage.getItem('apexIncV25')) || JSON.parse(JSON.stringify(defaultIncomes));
+    let realExpenses = JSON.parse(localStorage.getItem('apexExpV25')) || JSON.parse(JSON.stringify(defaultExpenses));
+    let realLedger = JSON.parse(localStorage.getItem('apexLedV25')) || JSON.parse(JSON.stringify(defaultLedger));
+    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV25')) || JSON.parse(JSON.stringify(defaultVaults));
+    
+    let startBal = realStartBal;
+    let incomes = realIncomes;
+    let expenses = realExpenses;
+    let customLedger = realLedger;
+    let vaults = realVaults;
+
+    let chartInstance = null;
+    let chartLabels = [];
+    let chartDataBalance = [];
+    let chartDataDebt = [];
+    let chartDataDanger = [];
+    
+    let penniePaidSoFar = 3666.56;
+
+    // UI Animation Helper
+    function triggerPop(id) {
+        let el = document.getElementById(id);
+        if(!el) return;
+        el.classList.remove('pop');
+        void el.offsetWidth; 
+        el.classList.add('pop');
+        setTimeout(() => el.classList.remove('pop'), 300);
+    }
+
+    // SANDBOX MODE LOGIC
+    function toggleSandbox() {
+        isSandbox = !isSandbox;
+        if(isSandbox) {
+            document.body.classList.add('sandbox-mode');
+            document.getElementById('sandbox-indicator').classList.remove('hidden');
+            document.getElementById('sandbox-icon').innerText = "⏹";
+            startBal = realStartBal;
+            incomes = JSON.parse(JSON.stringify(realIncomes));
+            expenses = JSON.parse(JSON.stringify(realExpenses));
+            customLedger = JSON.parse(JSON.stringify(realLedger));
+            vaults = JSON.parse(JSON.stringify(realVaults));
+        } else {
+            document.body.classList.remove('sandbox-mode');
+            document.getElementById('sandbox-indicator').classList.add('hidden');
+            document.getElementById('sandbox-icon').innerText = "▶";
+            startBal = realStartBal;
+            incomes = realIncomes;
+            expenses = realExpenses;
+            customLedger = realLedger;
+            vaults = realVaults;
+        }
+        runEngine();
+    }
+
+    // DATA MANAGEMENT
+    function saveData() {
+        if(isSandbox) return; 
+        localStorage.setItem('apexStartV25', startBal);
+        localStorage.setItem('apexIncV25', JSON.stringify(incomes));
+        localStorage.setItem('apexExpV25', JSON.stringify(expenses));
+        localStorage.setItem('apexLedV25', JSON.stringify(customLedger));
+        localStorage.setItem('apexVaultsV25', JSON.stringify(vaults));
+    }
+
+    function resetData() {
+        if(confirm("⚠ SYSTEM PURGE: Are you sure you want to restore factory defaults?")) {
+            localStorage.clear(); location.reload();
+        }
+    }
+
+    function exportData() {
+        const data = { startBal: realStartBal, incomes: realIncomes, expenses: realExpenses, customLedger: realLedger, vaults: realVaults };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `BudgetCommander_Backup_${new Date().toISOString().split('T')[0]}.json`;
+        a.click(); URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if(data.startBal) localStorage.setItem('apexStartV25', data.startBal);
+                if(data.incomes) localStorage.setItem('apexIncV25', JSON.stringify(data.incomes));
+                if(data.expenses) localStorage.setItem('apexExpV25', JSON.stringify(data.expenses));
+                if(data.customLedger) localStorage.setItem('apexLedV25', JSON.stringify(data.customLedger));
+                if(data.vaults) localStorage.setItem('apexVaultsV25', JSON.stringify(data.vaults));
+                alert("Backup restored successfully.");
+                location.reload();
+            } catch(err) { alert("Invalid backup file."); }
+        };
+        reader.readAsText(file);
+    }
+
+    // UI HELPERS
+    function getOrdinal(n) {
+        if (n === "Weekly") return "Weekly";
+        let s = ["th", "st", "nd", "rd"], v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+
+    function switchTab(t) {
+        ['dashboard', 'calendar', 'chart', 'debt', 'vault'].forEach(view => {
+            let el = document.getElementById('view-' + view);
+            if(el) el.classList.add('hidden');
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('view-' + t).classList.remove('hidden');
+        let tabBtn = document.getElementById('tab-' + (t==='dashboard'?'dash':t==='calendar'?'cal':t));
+        if(tabBtn) tabBtn.classList.add('active');
+        window.scrollTo(0,0); 
+        if(t === 'chart') setTimeout(initChart, 50); 
+    }
+
+    // INTERACTIVE ACTIONS
+    window.editStartBal = function() {
+        let n = prompt("Update your Starting Bank Balance (Anchored to Mar 21):", startBal);
+        if(n !== null && !isNaN(n)) { startBal = parseFloat(n); saveData(); runEngine(); }
+    }
+
+    window.editInc = function(id) {
+        let inc = incomes.find(i => i.id === id);
+        if(inc) {
+            let n = prompt(`Update amount for ${inc.name}:`, inc.amt);
+            if(n !== null && !isNaN(n)) { inc.amt = parseFloat(n); saveData(); runEngine(); }
+        }
+    }
+
+    window.editExpDay = function(name) {
+        let exp = expenses.find(e => e.name === name);
+        if (exp) {
+            let d = prompt(`Update day for ${name} (1-31, or 'Weekly'):`, exp.day);
+            if (d !== null) {
+                if (d.toLowerCase() === 'weekly') {
+                    exp.day = 'Weekly';
+                } else {
+                    let parsed = parseInt(d);
+                    if (!isNaN(parsed) && parsed >= 1 && parsed <= 31) exp.day = parsed;
+                    else return alert("Invalid day. Must be 1-31 or 'Weekly'.");
+                }
+                saveData(); runEngine();
+            }
+        }
+    }
+
+    window.editExpName = function(oldName) {
+        let exp = expenses.find(e => e.name === oldName);
+        if (exp) {
+            let n = prompt(`Update name for ${oldName}:`, exp.name);
+            if (n !== null && n.trim() !== "") { exp.name = n; saveData(); runEngine(); }
+        }
+    }
+
+    window.editExpAmt = function(name) {
+        let exp = expenses.find(e => e.name === name);
+        if (exp) {
+            let promptText = exp.day === "Weekly" ? `Update COMBINED MONTHLY total for ${name}:` : `Update monthly amount for ${name}:`;
+            let n = prompt(promptText, exp.amt);
+            if (n !== null && !isNaN(n)) { exp.amt = parseFloat(n); saveData(); runEngine(); }
+        }
+    }
+
+    window.editCustomDate = function(index) {
+        let n = prompt("Update date (Format: YYYY-MM-DD):", customLedger[index].date);
+        if(n !== null && n.trim() !== "") { customLedger[index].date = n; saveData(); runEngine(); }
+    }
+
+    window.editCustomName = function(index) {
+        let n = prompt("Update custom transaction name:", customLedger[index].name);
+        if(n !== null && n.trim() !== "") { customLedger[index].name = n; saveData(); runEngine(); }
+    }
+
+    window.editCustomAmt = function(index) {
+        let n = prompt("Update custom transaction amount:", customLedger[index].amt);
+        if(n !== null && !isNaN(n)) { customLedger[index].amt = parseFloat(n); saveData(); runEngine(); }
+    }
+
+    function addCustomTransaction() {
+        const d = document.getElementById('cust-date').value;
+        const n = document.getElementById('cust-name').value;
+        const a = document.getElementById('cust-amt').value;
+        if(!d || !n || !a) return alert("Missing fields.");
+        customLedger.push({ date: d, name: n, amt: parseFloat(a) });
+        saveData();
+        document.getElementById('cust-name').value = ""; document.getElementById('cust-amt').value = "";
+        runEngine();
+    }
+
+    window.deleteCustom = function(index) { customLedger.splice(index, 1); saveData(); runEngine(); }
+
+    window.addVault = function() {
+        let n = prompt("Goal Vault Name:");
+        if(!n) return;
+        let t = prompt("Target Amount ($):");
+        if(!t || isNaN(t)) return;
+        vaults.push({name: n, target: parseFloat(t), saved: 0});
+        saveData(); runEngine();
+    }
+
+    window.interactVault = function(index) {
+        let action = prompt("Type '1' to Edit Target Amount. Type '2' to DELETE this Vault.");
+        if(action === '1') {
+            let t = prompt("New Target Amount ($):", vaults[index].target);
+            if(t !== null && !isNaN(t)) { vaults[index].target = parseFloat(t); saveData(); runEngine(); }
+        } else if(action === '2') {
+            if(confirm(`Are you sure you want to delete the ${vaults[index].name} vault?`)) {
+                vaults.splice(index, 1); saveData(); runEngine();
+            }
+        }
+    }
+
+    window.updateSnowball = function() {
+        let extra = parseInt(document.getElementById('debt-slider').value);
+        document.getElementById('slider-display').innerText = "+$" + extra.toLocaleString() + " /mo";
+        let rem = 63000 - penniePaidSoFar;
+        let baseMonths = Math.ceil(rem / 1400);
+        let newMonths = Math.ceil(rem / (1400 + extra));
+        let resultEl = document.getElementById('snowball-result');
+        if(extra === 0) {
+            resultEl.innerHTML = `Base Timeline: At $1,400/mo, you will be debt-free in ~<strong>${baseMonths} months</strong>.`;
+            resultEl.style.background = "#fff"; resultEl.style.color = "var(--text-main)"; resultEl.style.borderColor = "var(--border)";
+        } else {
+            resultEl.innerHTML = `⚡ <strong>ACCELERATOR:</strong> Payoff drops to <strong>${newMonths} months</strong>! You save <strong>${baseMonths - newMonths} months</strong> of debt.`;
+            resultEl.style.background = "var(--primary-light)"; resultEl.style.color = "var(--primary)"; resultEl.style.borderColor = "var(--primary)";
+        }
+    }
+
+    // THE QUANTUM ENGINE
+    function runEngine() {
+        chartLabels = []; chartDataBalance = []; chartDataDebt = []; chartDataDanger = [];
+        penniePaidSoFar = 3666.56; 
+        let loopPennieDebt = 63000 - 3666.56;
+        
+        let nickAmt = incomes.find(i=>i.id==='nick').amt;
+        let vaAmt = incomes.find(i=>i.id==='va').amt;
+        let kianaAmt = incomes.find(i=>i.id==='kiana').amt;
+
+        // 1. Dashboard Interactive Incomes
+        let incHtml = incomes.map(inc => `
+            <div class="interactive-card glass-panel editable-card" onclick="editInc('${inc.id}')">
+                <div class="card-split" style="gap:5px; align-items:center;">
+                    <div>
+                        <strong style="font-size:1.05rem;">${inc.name}</strong> 
+                    </div>
+                    <div style="flex:1; text-align:right;">
+                        <span style="font-weight: 800; color: var(--success); font-family: 'JetBrains Mono', monospace;">$${inc.amt.toLocaleString()}</span>
+                    </div>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-sub); margin-top:5px; line-height:1.4;">${inc.desc}</div>
+            </div>
+        `).join('');
+        document.getElementById('income-list-container').innerHTML = incHtml;
+
+        // 2. Dashboard List (FULLY INTERACTIVE CELLS)
+        const list = document.getElementById('expense-list');
+        list.innerHTML = expenses.sort((a,b) => {
+            if (a.day === "Weekly" && b.day !== "Weekly") return -1;
+            if (a.day !== "Weekly" && b.day === "Weekly") return 1;
+            return a.day - b.day;
+        }).map(e => `
+            <tr>
+                <td class="editable" onclick="editExpDay('${e.name}')" style="color: var(--text-sub); font-weight: 800;">${getOrdinal(e.day)}</td>
+                <td class="editable" onclick="editExpName('${e.name}')"><strong>${e.name}</strong></td>
+                <td style="text-align: right;" class="editable" onclick="editExpAmt('${e.name}')">-$${e.amt.toLocaleString()}</td>
+            </tr>
+        `).join('');
+        list.innerHTML = `<tr style="background: rgba(251, 191, 36, 0.1);"><td style="color: var(--warning); font-weight: 800;">Starts May 2</td><td><strong>Mortgage (Bi-Wk)</strong></td><td style="text-align: right; color: var(--warning); font-weight: 800; font-family: 'JetBrains Mono', monospace;">-$1,574.50</td></tr>` + list.innerHTML;
+        
+        let sumExpStr = "$" + expenses.reduce((s, x) => s + x.amt, 0).toLocaleString();
+        if(document.getElementById('sum-exp').innerText !== sumExpStr) {
+            document.getElementById('sum-exp').innerText = sumExpStr; triggerPop('sum-exp');
+        }
+        
+        let baseIncStr = "$" + (vaAmt + (nickAmt * 2) + (kianaAmt * 4)).toLocaleString();
+        document.getElementById('sum-inc').innerText = baseIncStr;
+
+        vaults.forEach(v => v.saved = 0);
+
+        // 3. Custom Ledger (FULLY INTERACTIVE CELLS)
+        const ledgerList = document.getElementById('custom-ledger-list');
+        ledgerList.innerHTML = customLedger.sort((a,b) => new Date(a.date) - new Date(b.date)).map((c, i) => {
+            if(c.name.toLowerCase().startsWith("vault:")) {
+                let vName = c.name.split(":")[1].trim().toLowerCase();
+                let vMatch = vaults.find(v => v.name.toLowerCase() === vName);
+                if(vMatch) vMatch.saved += c.amt;
+            }
+            return `
+            <tr>
+                <td class="editable" onclick="editCustomDate(${i})" style="color: var(--text-sub); font-size: 0.8rem; font-weight:800; width:90px;">${c.date}</td>
+                <td class="editable" onclick="editCustomName(${i})"><span class="ev-custom" style="padding:4px 8px; border-radius:6px; font-size:0.7rem; font-weight:800; text-transform:uppercase;">${c.name}</span></td>
+                <td class="editable" onclick="editCustomAmt(${i})" style="text-align:right; font-weight:800; color:var(--danger); font-size: 0.95rem; font-family: 'JetBrains Mono', monospace;">-$${c.amt.toLocaleString()}</td>
+                <td style="text-align:right; width:40px;"><button class="btn-danger" onclick="deleteCustom(${i})">✕</button></td>
+            </tr>`
+        }).join('');
+
+        // 4. Render Vaults
+        let vHtml = vaults.map((v, i) => {
+            let pct = Math.min((v.saved / v.target) * 100, 100);
+            return `
+            <div class="vault-card glass-panel editable-card" onclick="interactVault(${i})">
+                <div class="debt-header-wrap" style="margin-bottom:15px; align-items:center;">
+                    <div class="debt-title-box"><strong style="font-size:1.1rem;">${v.name}</strong></div>
+                    <div class="debt-val-box"><strong style="color:var(--success); font-family:'JetBrains Mono', monospace; font-size:1.1rem; text-shadow:0 0 10px var(--success-glow);">$${v.saved.toLocaleString()} <span style="color:var(--text-sub); font-size:0.75rem;">/ $${v.target.toLocaleString()}</span></strong></div>
+                </div>
+                <div class="vault-bar-bg"><div class="vault-bar-fill" style="width:${pct}%;"></div></div>
+            </div>`;
+        }).join('');
+        vHtml += `<div class="vault-card glass-panel" style="display:flex; justify-content:center; align-items:center; border-style:dashed; cursor:pointer; background:transparent; border-color:var(--border);" onclick="addVault()"><strong style="color:var(--primary); font-size:1.1rem;">+ CREATE VAULT</strong></div>`;
+        document.getElementById('vault-list').innerHTML = vHtml;
+
+        // 5. True Calendar Math & Danger Scan
+        const calBody = document.getElementById('calendar-body');
+        const todayDate = new Date(); const normToday = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate(), 12, 0, 0);
+        let bal = startBal; let liveEstimatedBalance = startBal; 
+        
+        let minGlobalBalance = Infinity; let minGlobalDate = "";
+
+        let calHtml = "";
+        
+        function generateMonth(monthPrefix, monthNum, yearNum) {
+            let firstDayOfWeek = new Date(yearNum, monthNum - 1, 1).getDay();
+            let daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+            let weekStartDays = [];
+            for (let d = 1; d <= daysInMonth; d++) { if (new Date(yearNum, monthNum - 1, d, 12, 0, 0).getDay() === 1) weekStartDays.push(d); }
+            
+            let exactMonthInc = 0; let exactMonthExp = 0;
+            
+            for (let i = 1; i <= daysInMonth; i++) {
+                let iterDate = new Date(yearNum, monthNum - 1, i, 12, 0, 0);
+                let dateStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                
+                if (Math.round((iterDate - nickAnchorDate) / 86400000) % 14 === 0) exactMonthInc += nickAmt;
+                if (Math.round((iterDate - kianaAnchorDate) / 86400000) % 7 === 0) exactMonthInc += kianaAmt;
+                if (i === 1) exactMonthInc += vaAmt; 
+
+                if (iterDate >= mortgageAnchorDate && Math.round((iterDate - mortgageAnchorDate) / 86400000) % 14 === 0) exactMonthExp += 1574.5;
+                
+                let dailyExpList = expenses.filter(x => x.day === i).map(x => ({...x}));
+                if (weekStartDays.includes(i)) expenses.filter(x => x.day === "Weekly").forEach(we => dailyExpList.push({ name: we.name, amt: we.amt / weekStartDays.length }));
+                
+                exactMonthExp += dailyExpList.reduce((s, x) => s + x.amt, 0) + customLedger.filter(x => x.date === dateStr).reduce((s, x) => s + x.amt, 0);
+            }
+            
+            let exactNet = exactMonthInc - exactMonthExp;
+            let utilRatio = exactMonthInc > 0 ? (exactMonthExp / exactMonthInc) * 100 : 0;
+            let barColorClass = utilRatio > 95 ? "critical" : utilRatio > 85 ? "high" : "";
+            
+            let mHtml = `
+                <div class="month-header-strip glass-panel">
+                    <div class="month-header-top">
+                        <div class="month-title">${monthPrefix} ${yearNum}</div>
+                        <div class="month-stats">
+                            <div class="cs-chip" style="color:var(--success)">IN: $${exactMonthInc.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                            <div class="cs-chip" style="color:var(--danger)">OUT: $${exactMonthExp.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                            <div class="cs-chip" style="background:var(--primary-light); color:var(--primary); border:none;">NET: ${exactNet >= 0 ? '+' : ''}$${exactNet.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                        </div>
+                    </div>
+                    <div class="cs-util-wrapper">
+                        <div class="cs-util-label">LIQUIDITY BURN</div>
+                        <div class="cs-bar-bg">
+                            <div class="cs-bar-fill ${barColorClass}" style="width: ${Math.min(utilRatio, 100)}%;"></div>
+                        </div>
+                        <div class="cs-util-val">${utilRatio.toFixed(1)}%</div>
+                    </div>
+                </div>
+                <div class="calendar-wrapper"><div class="calendar-grid">
+                <div class="cal-header">Sun</div><div class="cal-header">Mon</div><div class="cal-header">Tue</div><div class="cal-header">Wed</div><div class="cal-header">Thu</div><div class="cal-header">Fri</div><div class="cal-header">Sat</div>`;
+            
+            for (let i = 0; i < firstDayOfWeek; i++) mHtml += `<div class="cal-day empty"></div>`;
+            
+            for (let i = 1; i <= daysInMonth; i++) {
+                let iterDate = new Date(yearNum, monthNum - 1, i, 12, 0, 0);
+                let dateStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                let isBeforeAnchor = iterDate < new Date(2026, 2, 21, 0, 0, 0);
+                let isAnchorDay = (monthNum === 3 && i === 21 && yearNum === 2026);
+
+                let incTotal = 0;
+                let eventsHTML = "";
+                
+                // Build Itemized Incomes
+                if (i === 1) {
+                    incTotal += vaAmt; 
+                    eventsHTML += `<div class="event ev-inc">+VA Pay ($${Math.round(vaAmt)})</div>`;
+                }
+                if (Math.round((iterDate - nickAnchorDate) / 86400000) >= 0 && Math.round((iterDate - nickAnchorDate) / 86400000) % 14 === 0) {
+                    incTotal += nickAmt;
+                    eventsHTML += `<div class="event ev-inc">+Nick Pay ($${Math.round(nickAmt)})</div>`;
+                }
+                if (Math.round((iterDate - kianaAnchorDate) / 86400000) >= 0 && Math.round((iterDate - kianaAnchorDate) / 86400000) % 7 === 0) {
+                    incTotal += kianaAmt;
+                    eventsHTML += `<div class="event ev-inc">+Kiana Pay ($${Math.round(kianaAmt)})</div>`;
+                }
+                
+                // Build Itemized Expenses
+                let dExp = expenses.filter(x => x.day === i).map(x => ({...x}));
+                if (weekStartDays.includes(i)) {
+                    expenses.filter(x => x.day === "Weekly").forEach(we => {
+                        dExp.push({ name: we.name, amt: we.amt / weekStartDays.length });
+                    });
+                }
+                
+                dExp.forEach(e => {
+                    eventsHTML += `<div class="event ev-exp">-${e.name} ($${Math.round(e.amt)})</div>`;
+                });
+
+                let expTotal = dExp.reduce((s, x) => s + x.amt, 0);
+                
+                if (iterDate >= mortgageAnchorDate && Math.round((iterDate - mortgageAnchorDate) / 86400000) % 14 === 0) {
+                    expTotal += 1574.5;
+                    eventsHTML += `<div class="event ev-mortgage">-Mortgage ($1,575)</div>`;
+                }
+                
+                let cLedger = customLedger.filter(x => x.date === dateStr);
+                cLedger.forEach(c => {
+                    eventsHTML += `<div class="event ev-custom">-${c.name} ($${Math.round(c.amt)})</div>`;
+                });
+                let custTotal = cLedger.reduce((s, x) => s + x.amt, 0);
+                expTotal += custTotal;
+
+                let displayBal = "--";
+
+                if (!isBeforeAnchor) {
+                    if (isAnchorDay) bal = startBal;
+                    else bal = bal + incTotal - expTotal;
+                    displayBal = "$" + Math.round(bal).toLocaleString();
+
+                    let pBase = dExp.filter(x => x.name.toLowerCase().includes("pennie")).reduce((s, x) => s + x.amt, 0);
+                    let pCust = customLedger.filter(x => x.date === dateStr && x.name.toLowerCase().includes("pennie")).reduce((s, x) => s + x.amt, 0);
+                    if(!isAnchorDay) loopPennieDebt -= (pBase + pCust);
+
+                    if(bal < minGlobalBalance) { minGlobalBalance = bal; minGlobalDate = `${monthPrefix} ${i}, ${yearNum}`; }
+                    
+                    if (iterDate <= normToday) {
+                        liveEstimatedBalance = bal;
+                        if(!isAnchorDay) penniePaidSoFar += (pBase + pCust);
+                    }
+                    chartLabels.push(`${monthPrefix} ${i}`); 
+                    chartDataBalance.push(bal); 
+                    chartDataDebt.push(loopPennieDebt);
+                    chartDataDanger.push(4000); // 4k hard floor
+                }
+                
+                mHtml += `<div class="cal-day glass-panel ${isBeforeAnchor ? 'past' : ''}"><div class="cal-num">${i}</div><div>${eventsHTML}</div><div style="margin-top:auto;"><div class="cal-bal">${displayBal}</div></div></div>`;
+            }
+            return mHtml + `</div></div>`; 
+        }
+
+        const mNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        let cMo = 3, cYr = 2026; 
+        for (let m = 0; m < 12; m++) { calHtml += generateMonth(mNames[cMo - 1], cMo, cYr); cMo++; if (cMo > 12) { cMo = 1; cYr++; } }
+        calBody.innerHTML = calHtml;
+
+        // Apply Top Numbers w/ Animations
+        let balStr = "$" + Math.round(liveEstimatedBalance).toLocaleString();
+        if(document.getElementById('live-balance').innerText !== balStr) { document.getElementById('live-balance').innerText = balStr; triggerPop('live-balance'); }
+        
+        document.getElementById('pennie-live-balance').innerText = "$" + (63000 - penniePaidSoFar).toLocaleString();
+        let paidStr = "$" + penniePaidSoFar.toLocaleString(undefined, {maximumFractionDigits: 0});
+        if(document.getElementById('sum-debt-paid').innerText !== paidStr) { document.getElementById('sum-debt-paid').innerText = paidStr; triggerPop('sum-debt-paid'); }
+        
+        document.getElementById('pennie-paid').innerText = "Total Paid: $" + penniePaidSoFar.toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('pennie-progress').style.width = Math.min((penniePaidSoFar / 63000) * 100, 100) + "%";
+        updateSnowball(); 
+        
+        // Alert Banner & HUD AI Status
+        const alertBanner = document.getElementById('alert-banner');
+        const sysStatus = document.getElementById('sys-status');
+        if(minGlobalBalance < 4000) {
+            alertBanner.innerHTML = `<span>⚠️ <strong>SYSTEM WARNING:</strong> Liquidity drops to <strong>$${Math.round(minGlobalBalance).toLocaleString()}</strong> on ${minGlobalDate}.</span>`;
+            alertBanner.classList.remove('hidden');
+            sysStatus.className = "status-chip status-warning"; sysStatus.innerHTML = "▲ STATUS: WARNING";
+        } else { 
+            alertBanner.classList.add('hidden'); 
+            sysStatus.className = "status-chip status-optimal"; sysStatus.innerHTML = "● STATUS: OPTIMAL";
+        }
+        
+        if(chartInstance) { 
+            chartInstance.data.labels = chartLabels; 
+            chartInstance.data.datasets[0].data = chartDataBalance; 
+            chartInstance.data.datasets[1].data = chartDataDebt; 
+            chartInstance.data.datasets[2].data = chartDataDanger; 
+            chartInstance.update(); 
+        }
+    }
+
+    function initChart() {
+        if(chartInstance) return; 
+        const ctx = document.getElementById('balanceChart').getContext('2d');
+        
+        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(79, 70, 229, 0.2)');
+        gradient.addColorStop(1, 'rgba(79, 70, 229, 0.0)');
+
+        chartInstance = new Chart(ctx, {
+            type: 'line', 
+            data: { 
+                labels: chartLabels, 
+                datasets: [
+                    { label: 'Bank Balance', data: chartDataBalance, borderColor: '#4f46e5', backgroundColor: gradient, borderWidth: 3, pointRadius: 0, fill: true, tension: 0.4, yAxisID: 'y' },
+                    { label: 'Pennie Debt', data: chartDataDebt, borderColor: '#f43f5e', backgroundColor: 'transparent', borderWidth: 3, pointRadius: 0, fill: false, tension: 0.4, yAxisID: 'y1' },
+                    { label: 'Danger Zone ($4k)', data: chartDataDanger, borderColor: '#f59e0b', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, tension: 0, yAxisID: 'y' }
+                ] 
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                interaction: { mode: 'index', intersect: false },
+                plugins: { 
+                    legend: { display: true, position: 'top', labels: {color: '#0f172a', font: {family: 'Plus Jakarta Sans', weight: 'bold'}} }, 
+                    tooltip: { backgroundColor: 'rgba(255, 255, 255, 0.95)', titleColor: '#0f172a', bodyColor: '#0f172a', titleFont: {family: 'Plus Jakarta Sans'}, bodyFont: {family: "'JetBrains Mono', monospace", size: 13}, padding: 12, cornerRadius: 8, borderColor: 'rgba(0,0,0,0.1)', borderWidth: 1 } 
+                }, 
+                scales: { 
+                    y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b', font: {family: "'JetBrains Mono', monospace"} } }, 
+                    y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f43f5e', font: {family: "'JetBrains Mono', monospace"} } },
+                    x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 12 } } 
+                } 
+            }
+        });
+    }
+
+    runEngine();
+</script>
+</body>
+</html>
