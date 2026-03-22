@@ -83,6 +83,7 @@
         .stat-label { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 8px; line-height: 1.4; word-wrap: break-word; }
         .stat-val { font-size: 1.7rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; transition: 0.3s; word-wrap: break-word; }
         .stat-val.pop { transform: scale(1.05); color: var(--primary); }
+        .accent-bar { position: absolute; top: 0; left: 0; width: 5px; height: 100%; background: var(--primary); }
 
         /* Sticky App Navigation */
         .header-controls { position: sticky; top: 10px; z-index: 100; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; background: rgba(248, 250, 252, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 10px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5); }
@@ -163,7 +164,10 @@
         .cal-day { background: #fff; border-radius: 16px; padding: 12px; border: 1px solid var(--border); min-height: 130px; display: flex; flex-direction: column; transition: 0.2s; scroll-snap-align: start; box-shadow: 0 2px 5px rgba(0,0,0,0.01);}
         .cal-day:hover { border-color: var(--primary); box-shadow: 0 8px 20px var(--primary-light); transform: translateY(-2px); z-index: 2;}
         .cal-day.empty { background: transparent; border: none; box-shadow: none; pointer-events: none; }
+        
+        /* LIVE-DIMMING PAST DATES */
         .cal-day.past { opacity: 0.4; pointer-events: none; background: #f8fafc; border: 1px dashed var(--border); }
+        
         .cal-num { font-weight: 800; font-size: 0.9rem; color: var(--text-sub); margin-bottom: 10px; }
         .cal-bal { font-size: 1rem; font-weight: 800; color: var(--text-main); text-align: right; margin-top: auto; font-family: 'JetBrains Mono', monospace; }
         
@@ -204,7 +208,7 @@
         .hidden { display: none !important; }
 
         /* ======================================================
-           STRICT MOBILE RESPONSIVENESS FIXES
+           STRICT MOBILE RESPONSIVENESS FIXES (NO OVERFLOW)
            ====================================================== */
         @media (max-width: 1024px) {
             .layout-grid { grid-template-columns: 1fr; }
@@ -233,7 +237,7 @@
             .header-controls { 
                 position: fixed; 
                 bottom: 0; left: 0; right: 0; top: auto; 
-                margin: 0; padding: 10px 5px 25px 5px; 
+                margin: 0; padding: 10px 5px 25px 5px; /* iOS safe area */
                 border-radius: 0; border-top: 1px solid var(--border); 
                 background: rgba(248, 250, 252, 0.95); box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
                 justify-content: space-around; z-index: 1000; 
@@ -249,7 +253,7 @@
             .tab-icon { font-size: 1.2rem; margin-bottom: 2px;}
             .tab-label { font-size: 0.55rem; letter-spacing: 0; text-transform: capitalize; }
 
-            /* TRUE MOBILE CALENDAR GRID - NO CUTOFF */
+            /* TRUE MOBILE CALENDAR GRID - NO SCROLLING / SHRINK FIX */
             .calendar-wrapper { overflow-x: hidden; padding-bottom: 5px; width: 100%; box-sizing: border-box;}
             .calendar-grid { 
                 display: grid; 
@@ -262,7 +266,7 @@
             .cal-header { font-size: 7px !important; padding-bottom: 2px !important; letter-spacing: 0 !important; }
             .cal-day { min-height: 55px !important; padding: 2px !important; border-radius: 4px !important; border-width: 1px !important; overflow: hidden !important; box-sizing: border-box !important;}
             .cal-num { font-size: 8px !important; margin-bottom: 1px !important; }
-            .cal-bal { font-size: 7px !important; letter-spacing: -0.5px !important; margin-top: 1px !important;}
+            .cal-bal { font-size: 7px !important; letter-spacing: -0.5px !important; margin-top: 1px !important; word-wrap: break-word;}
             .event { 
                 font-size: 6px !important; 
                 padding: 1px !important; 
@@ -484,7 +488,7 @@
     const mortgageAnchorDate = new Date(2026, 4, 2, 12, 0, 0); 
     
     // ==========================================
-    // FULLY INTERACTIVE DATA STATE (V35 Update)
+    // FULLY INTERACTIVE DATA STATE
     // ==========================================
     
     const defaultIncomes = [
@@ -526,11 +530,11 @@
 
     // LIVE STATE
     let isSandbox = false;
-    let realStartBal = parseFloat(localStorage.getItem('apexStartV35')) || 9000;
-    let realIncomes = JSON.parse(localStorage.getItem('apexIncV35')) || JSON.parse(JSON.stringify(defaultIncomes));
-    let realExpenses = JSON.parse(localStorage.getItem('apexExpV35')) || JSON.parse(JSON.stringify(defaultExpenses));
-    let realLedger = JSON.parse(localStorage.getItem('apexLedV35')) || JSON.parse(JSON.stringify(defaultLedger));
-    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV35')) || JSON.parse(JSON.stringify(defaultVaults));
+    let realStartBal = parseFloat(localStorage.getItem('apexStartV36')) || 9000;
+    let realIncomes = JSON.parse(localStorage.getItem('apexIncV36')) || JSON.parse(JSON.stringify(defaultIncomes));
+    let realExpenses = JSON.parse(localStorage.getItem('apexExpV36')) || JSON.parse(JSON.stringify(defaultExpenses));
+    let realLedger = JSON.parse(localStorage.getItem('apexLedV36')) || JSON.parse(JSON.stringify(defaultLedger));
+    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV36')) || JSON.parse(JSON.stringify(defaultVaults));
     
     let startBal = realStartBal;
     let incomes = realIncomes;
@@ -587,11 +591,11 @@
     // DATA MANAGEMENT
     function saveData() {
         if(isSandbox) return; 
-        localStorage.setItem('apexStartV35', startBal);
-        localStorage.setItem('apexIncV35', JSON.stringify(incomes));
-        localStorage.setItem('apexExpV35', JSON.stringify(expenses));
-        localStorage.setItem('apexLedV35', JSON.stringify(customLedger));
-        localStorage.setItem('apexVaultsV35', JSON.stringify(vaults));
+        localStorage.setItem('apexStartV36', startBal);
+        localStorage.setItem('apexIncV36', JSON.stringify(incomes));
+        localStorage.setItem('apexExpV36', JSON.stringify(expenses));
+        localStorage.setItem('apexLedV36', JSON.stringify(customLedger));
+        localStorage.setItem('apexVaultsV36', JSON.stringify(vaults));
     }
     
     // Manual Save Button Logic
@@ -608,19 +612,23 @@
         }
     }
 
-    // PERFECT 1-PAGE PDF GENERATOR
+    // PERFECT 1-PAGE PROPOSAL PDF GENERATOR
     window.downloadPDF = function() {
         let btn = event.target;
         let oldText = btn.innerText;
         btn.innerText = "⏳ Generating...";
         
+        // Grab chart as image
+        const chartCanvas = document.getElementById('balanceChart');
+        const chartImg = chartCanvas ? chartCanvas.toDataURL('image/png', 1.0) : '';
+        
         const pdfDiv = document.createElement('div');
-        pdfDiv.style.padding = '40px';
+        // Force an exact width that maps safely to 8.5x11 to prevent table crushing
+        pdfDiv.style.width = '750px'; 
+        pdfDiv.style.padding = '20px';
         pdfDiv.style.fontFamily = 'Helvetica, Arial, sans-serif';
         pdfDiv.style.color = '#0f172a';
         pdfDiv.style.background = '#ffffff';
-        // Enforce a strict 1000px internal width to stop table wrapping
-        pdfDiv.style.width = '1000px'; 
         pdfDiv.style.boxSizing = 'border-box';
 
         let baseIncStr = document.getElementById('sum-inc').innerText;
@@ -629,121 +637,148 @@
         let pennieBal = (63000 - penniePaidSoFar).toLocaleString(undefined, {maximumFractionDigits:0});
 
         let sortedExp = expenses.sort((a,b) => (a.day==="Weekly"?-1:b.day==="Weekly"?1:a.day-b.day));
-        let halfExp = Math.ceil(sortedExp.length / 2);
-        let leftExp = sortedExp.slice(0, halfExp);
-        let rightExp = sortedExp.slice(halfExp);
+        // Split into 3 columns for extreme compactness
+        let third = Math.ceil(sortedExp.length / 3);
+        let col1 = sortedExp.slice(0, third);
+        let col2 = sortedExp.slice(third, third*2);
+        let col3 = sortedExp.slice(third*2);
+
+        const renderExpRow = (e) => `
+            <tr>
+                <td style="padding: 5px; border: 1px solid #e2e8f0; color: #64748b;">${e.day}</td>
+                <td style="padding: 5px; border: 1px solid #e2e8f0; font-weight: bold;">${e.name}</td>
+                <td style="padding: 5px; border: 1px solid #e2e8f0; text-align: right; color: #f43f5e;">-$${e.amt.toLocaleString()}</td>
+            </tr>
+        `;
 
         let html = `
-            <div style="border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 25px;">
-                <h1 style="margin: 0; color: #4f46e5; font-size: 28px; font-weight: bold;">BUDGET COMMANDER <span style="color: #8b5cf6;">// APEX</span></h1>
-                <p style="margin: 6px 0 0 0; color: #64748b; font-size: 13px;">EXECUTIVE FINANCIAL OVERVIEW &nbsp;&bull;&nbsp; Generated: ${new Date().toLocaleDateString()}</p>
-            </div>
-            
-            <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Macro Financials</h2>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px; table-layout: fixed;">
+            <table width="100%" style="border-bottom: 2px solid #4f46e5; margin-bottom: 15px;">
                 <tr>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; background: #f8fafc; width: 25%;"><strong>Live Balance</strong></td>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #4f46e5; width: 25%;">${liveBalStr}</td>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; background: #f8fafc; width: 25%;"><strong>Pennie Remaining</strong></td>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #f43f5e; width: 25%;">$${pennieBal}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; background: #f8fafc;"><strong>Baseline Income</strong></td>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #10b981;">${baseIncStr}</td>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; background: #f8fafc;"><strong>Baseline Outflow</strong></td>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; color: #f43f5e;">${baseExpStr}</td>
+                    <td style="padding-bottom: 10px;">
+                        <h1 style="margin: 0; color: #4f46e5; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">BUDGET COMMANDER <span style="color: #8b5cf6;">// APEX</span></h1>
+                        <p style="margin: 2px 0 0 0; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Executive Financial Overview &nbsp;&bull;&nbsp; Generated: ${new Date().toLocaleDateString()}</p>
+                    </td>
                 </tr>
             </table>
 
-            <div style="display: flex; gap: 30px; margin-bottom: 30px;">
-                <div style="flex: 1;">
-                    <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Goal Vaults</h2>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed;">
-                        ${vaults.map(v => `
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #e2e8f0; width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>${v.name}</strong></td>
-                                <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #10b981; font-weight: bold; width: 40%; white-space: nowrap;">$${v.saved.toLocaleString()} <span style="color:#94a3b8; font-weight:normal;">/ $${v.target.toLocaleString()}</span></td>
-                            </tr>
-                        `).join('')}
-                    </table>
-                </div>
-                <div style="flex: 1;">
-                    <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Income Engines</h2>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed;">
-                        ${incomes.map(i => `
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #e2e8f0; width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>${i.name}</strong></td>
-                                <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #10b981; font-weight: bold; width: 30%; white-space: nowrap;">$${i.amt.toLocaleString()}</td>
-                            </tr>
-                        `).join('')}
-                    </table>
-                </div>
+            <table width="100%" style="margin-bottom: 15px; text-align: center; border-collapse: separate; border-spacing: 8px 0;">
+                <tr>
+                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #4f46e5; padding: 12px; width: 25%; border-radius: 6px;">
+                        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Live Balance</div>
+                        <div style="font-size: 18px; color: #4f46e5; font-weight: bold;">${liveBalStr}</div>
+                    </td>
+                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #10b981; padding: 12px; width: 25%; border-radius: 6px;">
+                        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Base Income</div>
+                        <div style="font-size: 18px; color: #10b981; font-weight: bold;">${baseIncStr}</div>
+                    </td>
+                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #f43f5e; padding: 12px; width: 25%; border-radius: 6px;">
+                        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Base Outflow</div>
+                        <div style="font-size: 18px; color: #f43f5e; font-weight: bold;">${baseExpStr}</div>
+                    </td>
+                    <td style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: 3px solid #f59e0b; padding: 12px; width: 25%; border-radius: 6px;">
+                        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 4px;">Debt Eliminated</div>
+                        <div style="font-size: 18px; color: #f59e0b; font-weight: bold;">$${penniePaidSoFar.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                    </td>
+                </tr>
+            </table>
+
+            <h2 style="font-size: 12px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">365-Day Trajectory</h2>
+            <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 15px; text-align: center; background: #fff;">
+                <img src="${chartImg}" style="max-width: 100%; height: 150px; object-fit: contain;">
             </div>
 
-            <div style="display: flex; gap: 30px; margin-bottom: 30px;">
-                <div style="flex: 1;">
-                    <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Debt Matrix</h2>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed;">
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0; width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>Pennie Consolidation Loan</strong></td>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #4f46e5; font-weight: bold; width: 35%; white-space: nowrap;">$${pennieBal}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>Kiana's Credit Card</strong></td>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #f43f5e; font-weight: bold; white-space: nowrap;">-$2,435/mo</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>Nick's Credit Card</strong></td>
-                            <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #f43f5e; font-weight: bold; white-space: nowrap;">-$500/mo</td>
-                        </tr>
-                    </table>
-                </div>
-                <div style="flex: 1;">
-                    <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Custom Ledger</h2>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed;">
-                        ${customLedger.length === 0 ? '<tr><td style="padding: 8px; color: #64748b; border: 1px solid #e2e8f0;">No custom data injected.</td></tr>' : ''}
-                        ${customLedger.slice(0, 4).map(c => `
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #e2e8f0; color: #64748b; width: 30%; white-space: nowrap;">${c.date}</td>
-                                <td style="padding: 8px; border: 1px solid #e2e8f0; width: 45%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><strong>${c.name}</strong></td>
-                                <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #f43f5e; font-weight: bold; width: 25%; white-space: nowrap;">-$${c.amt.toLocaleString()}</td>
+            <table width="100%" style="margin-bottom: 15px; border-collapse: collapse;">
+                <tr>
+                    <td style="width: 48%; vertical-align: top; padding-right: 2%;">
+                        <h2 style="font-size: 12px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Debt Consolidation Matrix</h2>
+                        <table width="100%" style="border-collapse: collapse; font-size: 11px; margin-bottom: 15px;">
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 6px 0;"><strong>Pennie Consolidation Loan</strong></td>
+                                <td style="padding: 6px 0; text-align: right; color: #4f46e5; font-weight: bold;">$${pennieBal}</td>
                             </tr>
-                        `).join('')}
-                    </table>
-                </div>
-            </div>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 6px 0;"><strong>Kiana's Credit Card</strong></td>
+                                <td style="padding: 6px 0; text-align: right; color: #f43f5e; font-weight: bold;">-$2,435/mo</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 6px 0;"><strong>Nick's Credit Card</strong></td>
+                                <td style="padding: 6px 0; text-align: right; color: #f43f5e; font-weight: bold;">-$500/mo</td>
+                            </tr>
+                        </table>
 
-            <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Fixed Expense Ledger</h2>
-            <div style="display: flex; gap: 30px;">
-                <table style="flex: 1; border-collapse: collapse; font-size: 12px; text-align: left; table-layout: fixed;">
-                    <tr style="background: #f1f5f9;">
-                        <th style="padding: 6px; border: 1px solid #e2e8f0; width: 25%;">Day</th>
-                        <th style="padding: 6px; border: 1px solid #e2e8f0; width: 50%;">Item Name</th>
-                        <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; width: 25%;">Amount</th>
-                    </tr>
-                    ${leftExp.map(e => `
-                        <tr>
-                            <td style="padding: 6px; border: 1px solid #e2e8f0; color: #64748b; white-space: nowrap;">${e.day}</td>
-                            <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${e.name}</td>
-                            <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; color: #f43f5e; white-space: nowrap;">-$${e.amt.toLocaleString()}</td>
-                        </tr>
-                    `).join('')}
-                </table>
-                <table style="flex: 1; border-collapse: collapse; font-size: 12px; text-align: left; table-layout: fixed;">
-                    <tr style="background: #f1f5f9;">
-                        <th style="padding: 6px; border: 1px solid #e2e8f0; width: 25%;">Day</th>
-                        <th style="padding: 6px; border: 1px solid #e2e8f0; width: 50%;">Item Name</th>
-                        <th style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; width: 25%;">Amount</th>
-                    </tr>
-                    ${rightExp.map(e => `
-                        <tr>
-                            <td style="padding: 6px; border: 1px solid #e2e8f0; color: #64748b; white-space: nowrap;">${e.day}</td>
-                            <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${e.name}</td>
-                            <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; color: #f43f5e; white-space: nowrap;">-$${e.amt.toLocaleString()}</td>
-                        </tr>
-                    `).join('')}
-                </table>
-            </div>
+                        <h2 style="font-size: 12px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Goal Vaults</h2>
+                        <table width="100%" style="border-collapse: collapse; font-size: 11px;">
+                            ${vaults.map(v => `
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 6px 0;"><strong>${v.name}</strong></td>
+                                    <td style="padding: 6px 0; text-align: right; color: #10b981; font-weight: bold;">$${v.saved.toLocaleString()} <span style="color:#94a3b8; font-weight:normal;">/ $${v.target.toLocaleString()}</span></td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </td>
+                    <td style="width: 4%;"></td> <td style="width: 48%; vertical-align: top; padding-left: 2%;">
+                        <h2 style="font-size: 12px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Income Engines</h2>
+                        <table width="100%" style="border-collapse: collapse; font-size: 11px; margin-bottom: 15px;">
+                            ${incomes.map(i => `
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 6px 0;"><strong>${i.name}</strong></td>
+                                    <td style="padding: 6px 0; text-align: right; color: #10b981; font-weight: bold;">$${i.amt.toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+
+                        <h2 style="font-size: 12px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Custom Ledger (Injections)</h2>
+                        <table width="100%" style="border-collapse: collapse; font-size: 11px;">
+                            ${customLedger.length === 0 ? '<tr><td style="padding: 6px 0; color: #64748b;">No custom data injected.</td></tr>' : ''}
+                            ${customLedger.slice(-4).reverse().map(c => `
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 6px 0; color: #64748b; width: 30%;">${c.date}</td>
+                                    <td style="padding: 6px 0;"><strong>${c.name}</strong></td>
+                                    <td style="padding: 6px 0; text-align: right; color: #f43f5e; font-weight: bold;">-$${c.amt.toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </td>
+                </tr>
+            </table>
+
+            <h2 style="font-size: 12px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">Fixed Expense Ledger</h2>
+            <table width="100%" style="border-collapse: collapse;">
+                <tr>
+                    <td style="width: 32%; vertical-align: top;">
+                        <table width="100%" style="border-collapse: collapse; font-size: 10px; text-align: left;">
+                            <tr style="background: #f1f5f9;">
+                                <th style="padding: 5px; border: 1px solid #e2e8f0;">Day</th>
+                                <th style="padding: 5px; border: 1px solid #e2e8f0;">Item</th>
+                                <th style="padding: 5px; border: 1px solid #e2e8f0; text-align: right;">Amt</th>
+                            </tr>
+                            ${col1.map(renderExpRow).join('')}
+                        </table>
+                    </td>
+                    <td style="width: 2%;"></td>
+                    <td style="width: 32%; vertical-align: top;">
+                        <table width="100%" style="border-collapse: collapse; font-size: 10px; text-align: left;">
+                            <tr style="background: #f1f5f9;">
+                                <th style="padding: 5px; border: 1px solid #e2e8f0;">Day</th>
+                                <th style="padding: 5px; border: 1px solid #e2e8f0;">Item</th>
+                                <th style="padding: 5px; border: 1px solid #e2e8f0; text-align: right;">Amt</th>
+                            </tr>
+                            ${col2.map(renderExpRow).join('')}
+                        </table>
+                    </td>
+                    <td style="width: 2%;"></td>
+                    <td style="width: 32%; vertical-align: top;">
+                        <table width="100%" style="border-collapse: collapse; font-size: 10px; text-align: left;">
+                            <tr style="background: #f1f5f9;">
+                                <th style="padding: 5px; border: 1px solid #e2e8f0;">Day</th>
+                                <th style="padding: 5px; border: 1px solid #e2e8f0;">Item</th>
+                                <th style="padding: 5px; border: 1px solid #e2e8f0; text-align: right;">Amt</th>
+                            </tr>
+                            ${col3.map(renderExpRow).join('')}
+                        </table>
+                    </td>
+                </tr>
+            </table>
         `;
         
         pdfDiv.innerHTML = html;
@@ -756,7 +791,7 @@
         wrapper.appendChild(pdfDiv);
 
         const opt = {
-            margin:       0.4,
+            margin:       0.3,
             filename:     `Budget_Commander_Overview_${new Date().toISOString().split('T')[0]}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true },
@@ -985,7 +1020,7 @@
         vHtml += `<div class="vault-card glass-panel" style="display:flex; justify-content:center; align-items:center; border-style:dashed; cursor:pointer; background:transparent; border-color:var(--border);" onclick="addVault()"><strong style="color:var(--primary); font-size:1.1rem;">+ CREATE VAULT</strong></div>`;
         document.getElementById('vault-list').innerHTML = vHtml;
 
-        // 5. True Calendar Math & LIVE DIMMING ENGINE
+        // 5. True Calendar Math & Danger Scan
         const calBody = document.getElementById('calendar-body');
         const todayDate = new Date(); 
         const normToday = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate(), 12, 0, 0);
@@ -1054,8 +1089,6 @@
                 // MATH ANCHOR vs VISUAL ANCHOR
                 let isBeforeMathAnchor = iterDate < new Date(2026, 2, 21, 0, 0, 0);
                 let isMathAnchorDay = (monthNum === 3 && i === 21 && yearNum === 2026);
-                
-                // LIVE DIMMING ANCHOR (Checks against today's actual live clock)
                 let isPast = iterDate < normToday;
 
                 let incTotal = 0;
