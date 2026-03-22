@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            /* LUCID GLASS PALETTE (Premium Light Mode) */
+            /* LUCID GLASS PALETTE */
             --bg-base: #f8fafc; 
             --glass-bg: rgba(255, 255, 255, 0.85);
             --glass-border: rgba(255, 255, 255, 0.4);
@@ -72,7 +72,7 @@
         .gear-btn { user-select: none; background: rgba(255,255,255,0.9); border: 1px solid var(--border); border-radius: 14px; width: 38px; height: 38px; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .gear-btn:active { transform: rotate(45deg) scale(0.95); }
         
-        .settings-dropdown { position: absolute; right: 0; top: 48px; display: flex; flex-direction: column; gap: 8px; padding: 12px; width: 160px; z-index: 2000; opacity: 0; pointer-events: none; transform: translateY(-10px) scale(0.95); transform-origin: top right; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius: 16px;}
+        .settings-dropdown { position: absolute; right: 0; top: 48px; display: flex; flex-direction: column; gap: 8px; padding: 12px; width: 170px; z-index: 2000; opacity: 0; pointer-events: none; transform: translateY(-10px) scale(0.95); transform-origin: top right; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius: 16px;}
         .settings-dropdown.show { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
         .settings-dropdown .btn { width: 100%; justify-content: flex-start; padding: 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-radius: 10px;}
 
@@ -82,6 +82,7 @@
         .stat-label { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 8px; line-height: 1.4; word-wrap: break-word; }
         .stat-val { font-size: 1.7rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; transition: 0.3s; word-wrap: break-word; }
         .stat-val.pop { transform: scale(1.05); color: var(--primary); }
+        .accent-bar { position: absolute; top: 0; left: 0; width: 5px; height: 100%; background: var(--primary); }
 
         /* Sticky App Navigation */
         .header-controls { position: sticky; top: 10px; z-index: 100; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; background: rgba(248, 250, 252, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 10px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5); }
@@ -132,7 +133,7 @@
         .btn { user-select: none; padding: 14px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; border: none; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-success { background: var(--success); color: #fff; box-shadow: 0 4px 15px var(--success-glow); } 
         .btn-success:hover { background: #059669; transform: translateY(-2px); }
-        .btn-danger { background: var(--danger-light); color: var(--danger); padding: 8px 12px; border: 1px solid rgba(244,63,94,0.2); } 
+        .btn-danger { background: var(--danger-light); color: var(--danger); padding: 8px 12px; } 
         .btn-danger:hover { background: var(--danger); color: white; box-shadow: 0 4px 15px var(--danger-glow); }
         .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px var(--primary-glow);}
         .btn-primary:hover { background: #4338ca; transform: translateY(-2px); }
@@ -151,7 +152,7 @@
         .cs-bar-fill.critical { background: linear-gradient(90deg, #fb7185, #e11d48); }
         .cs-util-val { font-size: 1.1rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace; width: 55px; text-align: right; }
 
-        /* Calendar Mobile Scroll Fix */
+        /* Calendar Desktop Grid */
         .calendar-wrapper { width: 100%; overflow-x: auto; padding-bottom: 20px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
         .calendar-wrapper::-webkit-scrollbar { height: 6px; }
         .calendar-wrapper::-webkit-scrollbar-track { background: transparent; }
@@ -172,7 +173,7 @@
         .ev-custom { background: var(--primary-light); color: var(--primary-dark); border-left: 3px solid var(--primary); }
         .ev-mortgage { background: var(--warning-light); color: var(--warning); border-left: 3px solid var(--warning); }
 
-        /* Pennie Energy Bar */
+        /* Vaults & Energy */
         .energy-progress-container { background: var(--border); border-radius: 12px; height: 24px; width: 100%; overflow: hidden; margin: 20px 0; }
         .energy-progress-bar { 
             height: 100%; 
@@ -184,7 +185,6 @@
         }
         @keyframes energyFlow { 0% { background-position: 0% 0%; } 100% { background-position: 100% 0%; } }
 
-        /* Vaults */
         .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
         .vault-card { padding: 25px; border-top: 5px solid var(--success); cursor: pointer; position: relative;}
         .vault-card::before { content: '✎ EDIT'; position: absolute; top: 12px; right: 12px; font-size: 0.65rem; font-weight: 800; color: var(--success); opacity: 0; transition: 0.2s; letter-spacing: 1px; background: var(--success-light); padding: 4px 8px; border-radius: 6px;}
@@ -193,20 +193,13 @@
         .vault-bar-bg { background: var(--border); border-radius: 10px; height: 14px; width: 100%; overflow: hidden; margin: 0;}
         .vault-bar-fill { height: 100%; background: linear-gradient(90deg, #34d399, #10b981); }
 
-        /* Charts */
         .chart-wrapper { padding: 25px; height: 500px; width: 100%; }
-        
-        /* Slider */
         .slider-container { background: #f8fafc; padding: 25px; border-radius: 16px; border: 1px solid var(--border); margin-top: 25px;}
         input[type=range] { width: 100%; margin: 20px 0; cursor: pointer; accent-color: var(--primary); }
-        
-        /* Mobile Hints */
-        .mobile-hint { display: none; font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-top: -10px; margin-bottom: 15px; font-weight: 800; animation: pulse 2s infinite;}
-
         .hidden { display: none !important; }
 
         /* ======================================================
-           STRICT MOBILE RESPONSIVENESS FIXES (NO OVERFLOW)
+           STRICT MOBILE RESPONSIVENESS FIXES (NATIVE APP FEEL)
            ====================================================== */
         @media (max-width: 1024px) {
             .layout-grid { grid-template-columns: 1fr; }
@@ -216,8 +209,8 @@
             body { padding: 10px; padding-bottom: 90px; overflow-x: hidden; } /* Padding bottom for nav bar */
             .container { padding: 5px; width: 100%; overflow-x: hidden; }
             
-            .mobile-hint { display: block; }
             .hud-header { flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+            .hud-right { display: flex; flex-direction: column; gap: 10px; align-items: center; }
             
             /* Enable Gear Dropdown, Disable Desktop Settings Panel */
             .gear-container { display: block; }
@@ -252,6 +245,15 @@
             .tab-icon { font-size: 1.2rem; margin-bottom: 2px;}
             .tab-label { font-size: 0.55rem; letter-spacing: 0; text-transform: capitalize; }
 
+            /* TRUE MOBILE CALENDAR GRID - NO SCROLLING */
+            .calendar-wrapper { overflow-x: hidden; padding-bottom: 5px; }
+            .calendar-grid { grid-template-columns: repeat(7, 1fr); gap: 3px; min-width: 100%; }
+            .cal-header { font-size: 0.55rem; padding-bottom: 4px; border-bottom: 1px solid var(--border); letter-spacing: 0; }
+            .cal-day { min-height: 70px; padding: 3px; border-radius: 6px; border-width: 1px; }
+            .cal-num { font-size: 0.65rem; margin-bottom: 1px; }
+            .cal-bal { font-size: 0.55rem; letter-spacing: -0.5px; margin-top: 1px;}
+            .event { font-size: 0.45rem; padding: 2px 1px; margin-bottom: 1px; border-radius: 2px; letter-spacing: -0.5px; line-height: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: clip;}
+
             /* Overrides to kill horizontal scrolling entirely */
             table { min-width: 100% !important; width: 100%; }
             th { padding: 8px 6px !important; font-size: 0.65rem !important; }
@@ -268,11 +270,6 @@
         
         @media (max-width: 600px) {
             .debt-val-box { text-align: left !important; margin-top: 10px; width: 100%; }
-        }
-        
-        @media (max-width: 480px) {
-            .interactive-card, .table-container, .month-header-strip, .vault-card, .chart-wrapper, .debt-card { padding: 15px; }
-            .column-title { font-size: 1rem; }
         }
     </style>
 </head>
@@ -300,10 +297,8 @@
             <div class="gear-container" id="gear-wrapper">
                 <button class="gear-btn glass-panel" onclick="toggleSettings()">⚙️</button>
                 <div id="settings-menu" class="settings-dropdown glass-panel">
-                    <button class="btn btn-primary" onclick="exportData(); toggleSettings();">💾 Backup</button>
-                    <label class="btn" style="background: #fff; color: var(--text-main); border: 1px solid var(--border); cursor: pointer; text-align: left; justify-content: flex-start; margin: 0;">
-                        📂 Restore <input type="file" accept=".json" onchange="importData(event)" style="display:none;">
-                    </label>
+                    <button class="btn btn-success" style="margin: 0; background: var(--success); color: white;" onclick="forceSaveData(); toggleSettings();">💾 Save Data</button>
+                    <button class="btn btn-primary" style="margin: 0;" onclick="exportData(); toggleSettings();">📥 Download</button>
                     <button class="btn btn-danger" style="margin: 0;" onclick="resetData(); toggleSettings();">⚠ Reset App</button>
                 </div>
             </div>
@@ -361,11 +356,9 @@
             <div class="desktop-settings">
                 <div class="column-title" style="margin-top: 40px;">System Settings</div>
                 <div class="glass-panel" style="padding: 20px;">
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-                        <button class="btn btn-primary" style="flex:1;" onclick="exportData()">💾 Backup Data</button>
-                        <label class="btn" style="flex:1; text-align:center; background: #fff; color: var(--text-main); border: 1px solid var(--border); cursor: pointer; display: flex; justify-content: center; align-items: center;">
-                            📂 Restore <input type="file" accept=".json" onchange="importData(event)" style="display:none;">
-                        </label>
+                    <div class="sys-settings-btns" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                        <button class="btn btn-success" style="flex:1;" onclick="forceSaveData()">💾 Save Data</button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="exportData()">📥 Download Data</button>
                     </div>
                     <button class="btn" style="width: 100%; justify-content:center; background: var(--danger-light); border: 1px solid rgba(244,63,94,0.2); color: var(--danger);" onclick="resetData()">⚠ Factory Reset</button>
                 </div>
@@ -398,7 +391,6 @@
     </div>
 
     <div id="view-calendar" class="hidden">
-        <div class="mobile-hint">⟷ Swipe calendar to view full week ⟷</div>
         <div id="calendar-body"></div>
     </div>
 
@@ -481,7 +473,7 @@
     const mortgageAnchorDate = new Date(2026, 4, 2, 12, 0, 0); 
     
     // ==========================================
-    // FULLY INTERACTIVE DATA STATE (V30 Update - UI Polish)
+    // FULLY INTERACTIVE DATA STATE (V31 Update - App Calendar Grid)
     // ==========================================
     
     const defaultIncomes = [
@@ -523,11 +515,11 @@
 
     // LIVE STATE
     let isSandbox = false;
-    let realStartBal = parseFloat(localStorage.getItem('apexStartV30')) || 9000;
-    let realIncomes = JSON.parse(localStorage.getItem('apexIncV30')) || JSON.parse(JSON.stringify(defaultIncomes));
-    let realExpenses = JSON.parse(localStorage.getItem('apexExpV30')) || JSON.parse(JSON.stringify(defaultExpenses));
-    let realLedger = JSON.parse(localStorage.getItem('apexLedV30')) || JSON.parse(JSON.stringify(defaultLedger));
-    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV30')) || JSON.parse(JSON.stringify(defaultVaults));
+    let realStartBal = parseFloat(localStorage.getItem('apexStartV31')) || 9000;
+    let realIncomes = JSON.parse(localStorage.getItem('apexIncV31')) || JSON.parse(JSON.stringify(defaultIncomes));
+    let realExpenses = JSON.parse(localStorage.getItem('apexExpV31')) || JSON.parse(JSON.stringify(defaultExpenses));
+    let realLedger = JSON.parse(localStorage.getItem('apexLedV31')) || JSON.parse(JSON.stringify(defaultLedger));
+    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV31')) || JSON.parse(JSON.stringify(defaultVaults));
     
     let startBal = realStartBal;
     let incomes = realIncomes;
@@ -581,11 +573,18 @@
     // DATA MANAGEMENT
     function saveData() {
         if(isSandbox) return; 
-        localStorage.setItem('apexStartV30', startBal);
-        localStorage.setItem('apexIncV30', JSON.stringify(incomes));
-        localStorage.setItem('apexExpV30', JSON.stringify(expenses));
-        localStorage.setItem('apexLedV30', JSON.stringify(customLedger));
-        localStorage.setItem('apexVaultsV30', JSON.stringify(vaults));
+        localStorage.setItem('apexStartV31', startBal);
+        localStorage.setItem('apexIncV31', JSON.stringify(incomes));
+        localStorage.setItem('apexExpV31', JSON.stringify(expenses));
+        localStorage.setItem('apexLedV31', JSON.stringify(customLedger));
+        localStorage.setItem('apexVaultsV31', JSON.stringify(vaults));
+    }
+    
+    // Manual Save Button Logic
+    window.forceSaveData = function() {
+        saveData();
+        runEngine();
+        alert("Data successfully saved and engine synced.");
     }
 
     function resetData() {
@@ -599,27 +598,8 @@
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url; a.download = `BudgetCommander_Backup_${new Date().toISOString().split('T')[0]}.json`;
+        a.href = url; a.download = `BudgetCommander_Data_${new Date().toISOString().split('T')[0]}.json`;
         a.click(); URL.revokeObjectURL(url);
-    }
-
-    function importData(event) {
-        const file = event.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = JSON.parse(e.target.result);
-                if(data.startBal) localStorage.setItem('apexStartV30', data.startBal);
-                if(data.incomes) localStorage.setItem('apexIncV30', JSON.stringify(data.incomes));
-                if(data.expenses) localStorage.setItem('apexExpV30', JSON.stringify(data.expenses));
-                if(data.customLedger) localStorage.setItem('apexLedV30', JSON.stringify(data.customLedger));
-                if(data.vaults) localStorage.setItem('apexVaultsV30', JSON.stringify(data.vaults));
-                alert("Backup restored successfully.");
-                location.reload();
-            } catch(err) { alert("Invalid backup file."); }
-        };
-        reader.readAsText(file);
     }
 
     // UI HELPERS
