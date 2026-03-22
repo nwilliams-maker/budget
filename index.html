@@ -6,9 +6,10 @@
     <title>Budget Commander: Apex</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
-            /* LUCID GLASS PALETTE */
+            /* LUCID GLASS PALETTE (Premium Light Mode) */
             --bg-base: #f8fafc; 
             --glass-bg: rgba(255, 255, 255, 0.85);
             --glass-border: rgba(255, 255, 255, 0.4);
@@ -152,7 +153,7 @@
         .cs-bar-fill.critical { background: linear-gradient(90deg, #fb7185, #e11d48); }
         .cs-util-val { font-size: 1.1rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace; width: 55px; text-align: right; }
 
-        /* Calendar Mobile Scroll Fix */
+        /* Calendar Desktop Grid */
         .calendar-wrapper { width: 100%; overflow-x: auto; padding-bottom: 20px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
         .calendar-wrapper::-webkit-scrollbar { height: 6px; }
         .calendar-wrapper::-webkit-scrollbar-track { background: transparent; }
@@ -201,9 +202,6 @@
         .slider-container { background: #f8fafc; padding: 25px; border-radius: 16px; border: 1px solid var(--border); margin-top: 25px;}
         input[type=range] { width: 100%; margin: 20px 0; cursor: pointer; accent-color: var(--primary); }
         
-        /* Mobile Hints */
-        .mobile-hint { display: none; font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-top: -10px; margin-bottom: 15px; font-weight: 800; animation: pulse 2s infinite;}
-
         .hidden { display: none !important; }
 
         /* ======================================================
@@ -217,8 +215,7 @@
             body { padding: 10px; padding-bottom: 90px; overflow-x: hidden; } /* Padding bottom for nav bar */
             .container { padding: 5px; width: 100%; overflow-x: hidden; }
             
-            /* HORIZONTAL ALIGNMENT FIX FOR MOBILE HUD */
-            .hud-header { flex-direction: column; align-items: center; text-align: center; gap: 15px; }
+            .hud-header { flex-direction: column; align-items: center; text-align: center; gap: 12px; }
             .hud-right { display: flex; flex-direction: row; gap: 8px; align-items: center; justify-content: center; width: 100%; }
             .status-chip { font-size: 0.65rem; padding: 6px 10px; letter-spacing: 0.5px;}
             .sandbox-toggle { font-size: 0.65rem; padding: 6px 10px; height: 34px; box-sizing: border-box; margin: 0; position: static; border-width: 1px; border-radius: 12px;}
@@ -315,7 +312,7 @@
                 <button class="gear-btn glass-panel" onclick="toggleSettings()">⚙️</button>
                 <div id="settings-menu" class="settings-dropdown glass-panel">
                     <button class="btn btn-success" style="margin: 0; background: var(--success); color: white;" onclick="forceSaveData(); toggleSettings();">💾 Save Data</button>
-                    <button class="btn btn-primary" style="margin: 0;" onclick="exportData(); toggleSettings();">📥 Download</button>
+                    <button class="btn btn-primary" style="margin: 0;" onclick="downloadPDF(); toggleSettings();">📥 Download PDF</button>
                     <button class="btn btn-danger" style="margin: 0;" onclick="resetData(); toggleSettings();">⚠ Reset App</button>
                 </div>
             </div>
@@ -375,7 +372,7 @@
                 <div class="glass-panel" style="padding: 20px;">
                     <div class="sys-settings-btns" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
                         <button class="btn btn-success" style="flex:1;" onclick="forceSaveData()">💾 Save Data</button>
-                        <button class="btn btn-primary" style="flex:1;" onclick="exportData()">📥 Download Data</button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="downloadPDF()">📥 Download PDF</button>
                     </div>
                     <button class="btn" style="width: 100%; justify-content:center; background: var(--danger-light); border: 1px solid rgba(244,63,94,0.2); color: var(--danger);" onclick="resetData()">⚠ Factory Reset</button>
                 </div>
@@ -490,7 +487,7 @@
     const mortgageAnchorDate = new Date(2026, 4, 2, 12, 0, 0); 
     
     // ==========================================
-    // FULLY INTERACTIVE DATA STATE (V32 Update - Horizontal Mobile HUD)
+    // FULLY INTERACTIVE DATA STATE (V32 Update - PDF Export)
     // ==========================================
     
     const defaultIncomes = [
@@ -602,9 +599,10 @@
     
     // Manual Save Button Logic
     window.forceSaveData = function() {
+        if(isSandbox) return alert("Cannot save while in Sandbox Mode.");
         saveData();
         runEngine();
-        alert("Data successfully saved and engine synced.");
+        alert("System Data Successfully Saved.");
     }
 
     function resetData() {
@@ -613,13 +611,109 @@
         }
     }
 
-    function exportData() {
-        const data = { startBal: realStartBal, incomes: realIncomes, expenses: realExpenses, customLedger: realLedger, vaults: realVaults };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = `BudgetCommander_Data_${new Date().toISOString().split('T')[0]}.json`;
-        a.click(); URL.revokeObjectURL(url);
+    // GENERATE PDF REPORT
+    window.downloadPDF = function() {
+        let btn = event.target;
+        let oldText = btn.innerText;
+        btn.innerText = "⏳ Generating PDF...";
+        
+        const pdfDiv = document.createElement('div');
+        pdfDiv.style.padding = '40px';
+        pdfDiv.style.fontFamily = 'Helvetica, sans-serif';
+        pdfDiv.style.color = '#0f172a';
+        pdfDiv.style.background = '#ffffff';
+        pdfDiv.style.width = '800px'; 
+
+        let baseIncStr = document.getElementById('sum-inc').innerText;
+        let baseExpStr = document.getElementById('sum-exp').innerText;
+        let liveBalStr = document.getElementById('live-balance').innerText;
+        let pennieBal = (63000 - penniePaidSoFar).toLocaleString(undefined, {maximumFractionDigits:0});
+
+        let html = `
+            <div style="border-bottom: 3px solid #4f46e5; padding-bottom: 10px; margin-bottom: 20px;">
+                <h1 style="margin: 0; color: #4f46e5; font-size: 26px;">BUDGET COMMANDER <span style="color: #8b5cf6;">// APEX</span></h1>
+                <p style="margin: 5px 0 0 0; color: #64748b; font-size: 14px;">EXECUTIVE FINANCIAL OVERVIEW • Generated: ${new Date().toLocaleDateString()}</p>
+            </div>
+            
+            <h2 style="font-size: 18px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px;">Macro Financials</h2>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #e2e8f0; background: #f8fafc; width: 25%;"><strong>Live Balance</strong></td>
+                    <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #4f46e5; width: 25%;">${liveBalStr}</td>
+                    <td style="padding: 12px; border: 1px solid #e2e8f0; background: #f8fafc; width: 25%;"><strong>Pennie Remaining</strong></td>
+                    <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #f43f5e; width: 25%;">$${pennieBal}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #e2e8f0; background: #f8fafc;"><strong>Baseline Income</strong></td>
+                    <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #10b981;">${baseIncStr}</td>
+                    <td style="padding: 12px; border: 1px solid #e2e8f0; background: #f8fafc;"><strong>Baseline Outflow</strong></td>
+                    <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #f43f5e;">${baseExpStr}</td>
+                </tr>
+            </table>
+
+            <div style="display: flex; gap: 30px;">
+                <div style="flex: 1;">
+                    <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px;">Goal Vaults</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                        ${vaults.map(v => `
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>${v.name}</strong></td>
+                                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; color: #10b981; font-weight: bold;">$${v.saved.toLocaleString()} <span style="color:#94a3b8; font-weight:normal;">/ $${v.target.toLocaleString()}</span></td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                </div>
+                <div style="flex: 1;">
+                    <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px;">Income Engines</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                        ${incomes.map(i => `
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>${i.name}</strong><br><span style="font-size:11px; color:#64748b;">${i.desc}</span></td>
+                                <td style="padding: 10px; border: 1px solid #e2e8f0; text-align: right; color: #10b981; font-weight: bold;">$${i.amt.toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                </div>
+            </div>
+
+            <h2 style="font-size: 16px; color: #1e293b; text-transform: uppercase; margin-bottom: 10px;">Fixed Expense Ledger</h2>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; margin-bottom: 30px;">
+                <tr style="background: #f1f5f9;">
+                    <th style="padding: 8px; border: 1px solid #e2e8f0;">Day</th>
+                    <th style="padding: 8px; border: 1px solid #e2e8f0;">Item Name</th>
+                    <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: right;">Amount</th>
+                </tr>
+                ${expenses.sort((a,b) => (a.day==="Weekly"?-1:b.day==="Weekly"?1:a.day-b.day)).map(e => `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0; color: #64748b;">${e.day}</td>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">${e.name}</td>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #f43f5e;">-$${e.amt.toLocaleString()}</td>
+                    </tr>
+                `).join('')}
+            </table>
+        `;
+        
+        pdfDiv.innerHTML = html;
+        
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = '-9999px';
+        wrapper.style.top = '0';
+        document.body.appendChild(wrapper);
+        wrapper.appendChild(pdfDiv);
+
+        const opt = {
+            margin:       10,
+            filename:     `Budget_Commander_Overview_${new Date().toISOString().split('T')[0]}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        html2pdf().set(opt).from(pdfDiv).save().then(() => {
+            document.body.removeChild(wrapper);
+            btn.innerText = oldText;
+        });
     }
 
     // UI HELPERS
@@ -817,9 +911,9 @@
             return `
             <tr>
                 <td class="editable" onclick="editCustomDate(${i})" style="color: var(--text-sub); font-size: 0.8rem; font-weight:800; width:90px;">${c.date}</td>
-                <td class="editable" onclick="editCustomName(${i})"><span class="ev-custom" style="padding:4px 6px; border-radius:6px; font-size:0.65rem; font-weight:800; text-transform:uppercase;">${c.name}</span></td>
+                <td class="editable" onclick="editCustomName(${i})"><span class="ev-custom" style="padding:4px 8px; border-radius:6px; font-size:0.7rem; font-weight:800; text-transform:uppercase;">${c.name}</span></td>
                 <td class="editable" onclick="editCustomAmt(${i})" style="text-align:right; font-weight:800; color:var(--danger); font-size: 0.95rem; font-family: 'JetBrains Mono', monospace;">-$${c.amt.toLocaleString()}</td>
-                <td style="text-align:right; width:30px;"><button class="btn-danger" onclick="deleteCustom(${i})">✕</button></td>
+                <td style="text-align:right; width:40px;"><button class="btn-danger" onclick="deleteCustom(${i})">✕</button></td>
             </tr>`
         }).join('');
 
