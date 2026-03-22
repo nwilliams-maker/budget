@@ -73,7 +73,8 @@
         .header-controls { position: sticky; top: 10px; z-index: 100; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px; background: rgba(248, 250, 252, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); padding: 10px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5); }
         .tabs { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-grow: 1;}
         .tabs::-webkit-scrollbar { display: none; }
-        .tab-btn { user-select: none; scroll-snap-align: start; padding: 12px 18px; border-radius: 12px; border: none; background: transparent; cursor: pointer; font-weight: 800; color: var(--text-sub); transition: 0.3s; white-space: nowrap; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tab-btn { user-select: none; display: flex; align-items: center; gap: 6px; scroll-snap-align: start; padding: 10px 16px; border-radius: 12px; border: none; background: transparent; cursor: pointer; font-weight: 800; color: var(--text-sub); transition: 0.3s; white-space: nowrap; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tab-icon { font-size: 1.1rem; }
         .tab-btn:hover { color: var(--text-main); background: rgba(15,23,42,0.03); }
         .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 15px var(--primary-glow); transform: translateY(-1px); }
         
@@ -108,9 +109,10 @@
         tr td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; border-right: 1px solid var(--border-light); }
         tr:hover td { background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         
+        /* In-Table Editing */
         .editable { cursor: pointer; color: var(--primary); font-family: 'JetBrains Mono', monospace; position: relative; }
-        .editable::after { content: '✎'; position: absolute; right: -15px; opacity: 0; transition: 0.2s; font-size: 0.8rem; }
-        .editable:hover::after { opacity: 1; transform: translateX(3px); }
+        .editable::before { content: '✎'; position: absolute; right: 5px; opacity: 0; transition: 0.2s; font-size: 0.8rem; background: var(--primary-light); padding: 2px 4px; border-radius: 4px; font-family: 'Plus Jakarta Sans', sans-serif;}
+        .editable:hover::before { opacity: 1; transform: translateX(-5px); }
 
         /* Forms */
         .form-row { display: grid; grid-template-columns: 1fr 2fr 1fr auto; gap: 10px; align-items: center; padding: 15px 0; border-top: 1px solid var(--border); min-width: 500px;}
@@ -153,7 +155,7 @@
         .cal-num { font-weight: 800; font-size: 0.9rem; color: var(--text-sub); margin-bottom: 10px; }
         .cal-bal { font-size: 1rem; font-weight: 800; color: var(--text-main); text-align: right; margin-top: auto; font-family: 'JetBrains Mono', monospace; }
         
-        .event { font-size: 0.7rem; padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
+        .event { font-size: 0.7rem; padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; font-weight: 800; white-space: normal; overflow: hidden; line-height: 1.2; letter-spacing: -0.2px; }
         .ev-inc { background: var(--success-light); color: #047857; }
         .ev-exp { background: var(--danger-light); color: #be123c; }
         .ev-custom { background: var(--primary-light); color: var(--primary-dark); border-left: 3px solid var(--primary); }
@@ -200,12 +202,43 @@
         }
         
         @media (max-width: 768px) {
-            body { padding: 10px; padding-bottom: 90px; overflow-x: hidden; }
+            body { padding: 10px; padding-bottom: 90px; overflow-x: hidden; } /* Padding bottom for nav bar */
             .container { padding: 5px; width: 100%; overflow-x: hidden; }
             
             .mobile-hint { display: block; }
             .hud-header { flex-direction: column; align-items: center; text-align: center; }
             
+            /* Anti-Zoom on iOS */
+            input[type="text"], input[type="number"], input[type="date"] { font-size: 16px; padding: 12px;}
+
+            /* Perfect 2x2 Summary Grid */
+            .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .stat-card { padding: 15px; }
+            .stat-label { font-size: 0.65rem; }
+            .stat-val { font-size: 1.4rem; }
+
+            /* BOTTOM NAVIGATION BAR FOR MOBILE */
+            .header-controls { 
+                position: fixed; 
+                bottom: 0; left: 0; right: 0; top: auto; 
+                margin: 0; padding: 10px 5px 25px 5px; 
+                border-radius: 0; border-top: 1px solid var(--border); 
+                background: rgba(248, 250, 252, 0.95); box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+                justify-content: space-around; z-index: 1000; 
+            }
+            .tabs { gap: 0; overflow-x: visible; justify-content: space-around; width: 100%; }
+            .tab-btn { 
+                flex-direction: column; padding: 5px; background: transparent; box-shadow: none; border: none; 
+                width: 20%; gap: 4px;
+            }
+            .tab-btn:hover { background: transparent; transform: none; }
+            .tab-btn.active { background: transparent; color: var(--primary); box-shadow: none; transform: none; }
+            .tab-btn.active .tab-label { font-weight: 800; }
+            .tab-icon { font-size: 1.2rem; margin-bottom: 2px;}
+            .tab-label { font-size: 0.55rem; letter-spacing: 0; text-transform: capitalize; }
+            
+            .sandbox-toggle { position: absolute; top: 15px; right: 15px; padding: 6px 12px; font-size: 0.7rem; border-radius: 10px; background: rgba(255,255,255,0.8); }
+
             /* Overrides to kill horizontal scrolling entirely */
             table { min-width: 100% !important; width: 100%; }
             th { padding: 8px 6px !important; font-size: 0.65rem !important; }
@@ -222,10 +255,6 @@
             .month-header-top { flex-direction: column; align-items: flex-start; }
             .month-stats { flex-direction: column; width: 100%; }
             .cs-chip { justify-content: space-between; }
-            .stat-card { padding: 15px; }
-            .stat-val { font-size: 1.5rem; }
-            .tabs { padding-bottom: 5px; }
-            .tab-btn { padding: 10px 14px; font-size: 0.8rem; }
         }
         
         @media (max-width: 600px) {
@@ -280,14 +309,24 @@
 
     <div class="header-controls">
         <div class="tabs">
-            <button id="tab-dash" class="tab-btn active" onclick="switchTab('dashboard')">⌘ Control Panel</button>
-            <button id="tab-cal" class="tab-btn" onclick="switchTab('calendar')">📅 Forecast</button>
-            <button id="tab-vault" class="tab-btn" onclick="switchTab('vault')">🏦 Goal Vaults</button>
-            <button id="tab-chart" class="tab-btn" onclick="switchTab('chart')">📈 Analytics</button>
-            <button id="tab-debt" class="tab-btn" onclick="switchTab('debt')">🎯 Consolidation</button>
+            <button id="tab-dash" class="tab-btn active" onclick="switchTab('dashboard')">
+                <span class="tab-icon">⌘</span><span class="tab-label">Panel</span>
+            </button>
+            <button id="tab-cal" class="tab-btn" onclick="switchTab('calendar')">
+                <span class="tab-icon">📅</span><span class="tab-label">Forecast</span>
+            </button>
+            <button id="tab-vault" class="tab-btn" onclick="switchTab('vault')">
+                <span class="tab-icon">🏦</span><span class="tab-label">Vaults</span>
+            </button>
+            <button id="tab-chart" class="tab-btn" onclick="switchTab('chart')">
+                <span class="tab-icon">📈</span><span class="tab-label">Analytics</span>
+            </button>
+            <button id="tab-debt" class="tab-btn" onclick="switchTab('debt')">
+                <span class="tab-icon">🎯</span><span class="tab-label">Debt</span>
+            </button>
         </div>
         <button class="sandbox-toggle glass-panel" onclick="toggleSandbox()">
-            <span id="sandbox-icon">▶</span> Sandbox
+            <span id="sandbox-icon">▶</span> <span class="tab-label">Sandbox</span>
         </button>
     </div>
 
@@ -349,6 +388,9 @@
 
     <div id="view-chart" class="hidden">
         <div class="column-title">Full-Spectrum Trajectory</div>
+        <p style="font-size: 0.85rem; color: var(--text-sub); margin-top: -10px; margin-bottom: 15px;">
+            Dashed Orange Line represents your $4,000 Danger Zone floor.
+        </p>
         <div class="chart-wrapper glass-panel">
             <canvas id="balanceChart"></canvas>
         </div>
@@ -404,7 +446,7 @@
     const mortgageAnchorDate = new Date(2026, 4, 2, 12, 0, 0); 
     
     // ==========================================
-    // FULLY INTERACTIVE DATA STATE (V27 Update - Mobile Overflows Fixed)
+    // FULLY INTERACTIVE DATA STATE (V28 Update)
     // ==========================================
     
     const defaultIncomes = [
@@ -444,13 +486,13 @@
         { date: "2026-03-22", name: "Nick's CC Extra", amt: 585 }
     ];
 
-    // LIVE STATE (V27 applies exact strict mobile rules)
+    // LIVE STATE
     let isSandbox = false;
-    let realStartBal = parseFloat(localStorage.getItem('apexStartV27')) || 9000;
-    let realIncomes = JSON.parse(localStorage.getItem('apexIncV27')) || JSON.parse(JSON.stringify(defaultIncomes));
-    let realExpenses = JSON.parse(localStorage.getItem('apexExpV27')) || JSON.parse(JSON.stringify(defaultExpenses));
-    let realLedger = JSON.parse(localStorage.getItem('apexLedV27')) || JSON.parse(JSON.stringify(defaultLedger));
-    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV27')) || JSON.parse(JSON.stringify(defaultVaults));
+    let realStartBal = parseFloat(localStorage.getItem('apexStartV28')) || 9000;
+    let realIncomes = JSON.parse(localStorage.getItem('apexIncV28')) || JSON.parse(JSON.stringify(defaultIncomes));
+    let realExpenses = JSON.parse(localStorage.getItem('apexExpV28')) || JSON.parse(JSON.stringify(defaultExpenses));
+    let realLedger = JSON.parse(localStorage.getItem('apexLedV28')) || JSON.parse(JSON.stringify(defaultLedger));
+    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV28')) || JSON.parse(JSON.stringify(defaultVaults));
     
     let startBal = realStartBal;
     let incomes = realIncomes;
@@ -504,11 +546,11 @@
     // DATA MANAGEMENT
     function saveData() {
         if(isSandbox) return; 
-        localStorage.setItem('apexStartV27', startBal);
-        localStorage.setItem('apexIncV27', JSON.stringify(incomes));
-        localStorage.setItem('apexExpV27', JSON.stringify(expenses));
-        localStorage.setItem('apexLedV27', JSON.stringify(customLedger));
-        localStorage.setItem('apexVaultsV27', JSON.stringify(vaults));
+        localStorage.setItem('apexStartV28', startBal);
+        localStorage.setItem('apexIncV28', JSON.stringify(incomes));
+        localStorage.setItem('apexExpV28', JSON.stringify(expenses));
+        localStorage.setItem('apexLedV28', JSON.stringify(customLedger));
+        localStorage.setItem('apexVaultsV28', JSON.stringify(vaults));
     }
 
     function resetData() {
@@ -533,11 +575,11 @@
         reader.onload = function(e) {
             try {
                 const data = JSON.parse(e.target.result);
-                if(data.startBal) localStorage.setItem('apexStartV27', data.startBal);
-                if(data.incomes) localStorage.setItem('apexIncV27', JSON.stringify(data.incomes));
-                if(data.expenses) localStorage.setItem('apexExpV27', JSON.stringify(data.expenses));
-                if(data.customLedger) localStorage.setItem('apexLedV27', JSON.stringify(data.customLedger));
-                if(data.vaults) localStorage.setItem('apexVaultsV27', JSON.stringify(data.vaults));
+                if(data.startBal) localStorage.setItem('apexStartV28', data.startBal);
+                if(data.incomes) localStorage.setItem('apexIncV28', JSON.stringify(data.incomes));
+                if(data.expenses) localStorage.setItem('apexExpV28', JSON.stringify(data.expenses));
+                if(data.customLedger) localStorage.setItem('apexLedV28', JSON.stringify(data.customLedger));
+                if(data.vaults) localStorage.setItem('apexVaultsV28', JSON.stringify(data.vaults));
                 alert("Backup restored successfully.");
                 location.reload();
             } catch(err) { alert("Invalid backup file."); }
@@ -739,10 +781,10 @@
             }
             return `
             <tr>
-                <td class="editable" onclick="editCustomDate(${i})" style="color: var(--text-sub); font-size: 0.8rem; font-weight:800; width:80px;">${c.date}</td>
-                <td class="editable" onclick="editCustomName(${i})"><span class="ev-custom" style="padding:4px 6px; border-radius:6px; font-size:0.65rem; font-weight:800; text-transform:uppercase;">${c.name}</span></td>
+                <td class="editable" onclick="editCustomDate(${i})" style="color: var(--text-sub); font-size: 0.8rem; font-weight:800; width:90px;">${c.date}</td>
+                <td class="editable" onclick="editCustomName(${i})"><span class="ev-custom" style="padding:4px 8px; border-radius:6px; font-size:0.7rem; font-weight:800; text-transform:uppercase;">${c.name}</span></td>
                 <td class="editable" onclick="editCustomAmt(${i})" style="text-align:right; font-weight:800; color:var(--danger); font-size: 0.95rem; font-family: 'JetBrains Mono', monospace;">-$${c.amt.toLocaleString()}</td>
-                <td style="text-align:right; width:30px;"><button class="btn-danger" onclick="deleteCustom(${i})">✕</button></td>
+                <td style="text-align:right; width:40px;"><button class="btn-danger" onclick="deleteCustom(${i})">✕</button></td>
             </tr>`
         }).join('');
 
@@ -837,12 +879,12 @@
                 }
                 if (Math.round((iterDate - nickAnchorDate) / 86400000) >= 0 && Math.round((iterDate - nickAnchorDate) / 86400000) % 14 === 0) {
                     incTotal += nickAmt;
-                    let nm = incomes.find(i=>i.id==='nick').name.replace(' (Bi-Weekly)','');
+                    let nm = incomes.find(inc=>inc.id==='nick').name.replace(' (Bi-Weekly)','');
                     eventsHTML += `<div class="event ev-inc">+${nm} $${Math.round(nickAmt)}</div>`;
                 }
                 if (Math.round((iterDate - kianaAnchorDate) / 86400000) >= 0 && Math.round((iterDate - kianaAnchorDate) / 86400000) % 7 === 0) {
                     incTotal += kianaAmt;
-                    let km = incomes.find(i=>i.id==='kiana').name.replace(' (Weekly)','');
+                    let km = incomes.find(inc=>inc.id==='kiana').name.replace(' (Weekly)','');
                     eventsHTML += `<div class="event ev-inc">+${km} $${Math.round(kianaAmt)}</div>`;
                 }
                 
