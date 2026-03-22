@@ -67,7 +67,7 @@
         .sandbox-toggle { user-select: none; background: #fff; border: 2px solid #a855f7; color: #9333ea; padding: 8px 16px; border-radius: 14px; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 0.8rem; text-transform: uppercase; box-shadow: 0 4px 10px rgba(147, 51, 234, 0.1);}
         .sandbox-toggle:hover { background: #9333ea; color: white; box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3); }
 
-        /* Gear Dropdown (Hidden on Desktop by default, shown on mobile) */
+        /* Gear Dropdown */
         .gear-container { display: none; position: relative; }
         .gear-btn { user-select: none; background: rgba(255,255,255,0.9); border: 1px solid var(--border); border-radius: 14px; width: 38px; height: 38px; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .gear-btn:active { transform: rotate(45deg) scale(0.95); }
@@ -133,7 +133,7 @@
         .btn { user-select: none; padding: 14px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; border: none; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-success { background: var(--success); color: #fff; box-shadow: 0 4px 15px var(--success-glow); } 
         .btn-success:hover { background: #059669; transform: translateY(-2px); }
-        .btn-danger { background: var(--danger-light); color: var(--danger); padding: 8px 12px; } 
+        .btn-danger { background: var(--danger-light); color: var(--danger); padding: 8px 12px; border: 1px solid rgba(244,63,94,0.2); } 
         .btn-danger:hover { background: var(--danger); color: white; box-shadow: 0 4px 15px var(--danger-glow); }
         .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px var(--primary-glow);}
         .btn-primary:hover { background: #4338ca; transform: translateY(-2px); }
@@ -152,7 +152,7 @@
         .cs-bar-fill.critical { background: linear-gradient(90deg, #fb7185, #e11d48); }
         .cs-util-val { font-size: 1.1rem; font-weight: 800; color: var(--text-main); font-family: 'JetBrains Mono', monospace; width: 55px; text-align: right; }
 
-        /* Calendar Desktop Grid */
+        /* Calendar Mobile Scroll Fix */
         .calendar-wrapper { width: 100%; overflow-x: auto; padding-bottom: 20px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
         .calendar-wrapper::-webkit-scrollbar { height: 6px; }
         .calendar-wrapper::-webkit-scrollbar-track { background: transparent; }
@@ -173,7 +173,7 @@
         .ev-custom { background: var(--primary-light); color: var(--primary-dark); border-left: 3px solid var(--primary); }
         .ev-mortgage { background: var(--warning-light); color: var(--warning); border-left: 3px solid var(--warning); }
 
-        /* Vaults & Energy */
+        /* Pennie Energy Bar */
         .energy-progress-container { background: var(--border); border-radius: 12px; height: 24px; width: 100%; overflow: hidden; margin: 20px 0; }
         .energy-progress-bar { 
             height: 100%; 
@@ -185,6 +185,7 @@
         }
         @keyframes energyFlow { 0% { background-position: 0% 0%; } 100% { background-position: 100% 0%; } }
 
+        /* Vaults */
         .vault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
         .vault-card { padding: 25px; border-top: 5px solid var(--success); cursor: pointer; position: relative;}
         .vault-card::before { content: '✎ EDIT'; position: absolute; top: 12px; right: 12px; font-size: 0.65rem; font-weight: 800; color: var(--success); opacity: 0; transition: 0.2s; letter-spacing: 1px; background: var(--success-light); padding: 4px 8px; border-radius: 6px;}
@@ -193,13 +194,20 @@
         .vault-bar-bg { background: var(--border); border-radius: 10px; height: 14px; width: 100%; overflow: hidden; margin: 0;}
         .vault-bar-fill { height: 100%; background: linear-gradient(90deg, #34d399, #10b981); }
 
+        /* Charts */
         .chart-wrapper { padding: 25px; height: 500px; width: 100%; }
+        
+        /* Slider */
         .slider-container { background: #f8fafc; padding: 25px; border-radius: 16px; border: 1px solid var(--border); margin-top: 25px;}
         input[type=range] { width: 100%; margin: 20px 0; cursor: pointer; accent-color: var(--primary); }
+        
+        /* Mobile Hints */
+        .mobile-hint { display: none; font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-top: -10px; margin-bottom: 15px; font-weight: 800; animation: pulse 2s infinite;}
+
         .hidden { display: none !important; }
 
         /* ======================================================
-           STRICT MOBILE RESPONSIVENESS FIXES (NATIVE APP FEEL)
+           STRICT MOBILE RESPONSIVENESS FIXES (NO OVERFLOW)
            ====================================================== */
         @media (max-width: 1024px) {
             .layout-grid { grid-template-columns: 1fr; }
@@ -209,8 +217,12 @@
             body { padding: 10px; padding-bottom: 90px; overflow-x: hidden; } /* Padding bottom for nav bar */
             .container { padding: 5px; width: 100%; overflow-x: hidden; }
             
-            .hud-header { flex-direction: column; align-items: center; text-align: center; gap: 12px; }
-            .hud-right { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+            /* HORIZONTAL ALIGNMENT FIX FOR MOBILE HUD */
+            .hud-header { flex-direction: column; align-items: center; text-align: center; gap: 15px; }
+            .hud-right { display: flex; flex-direction: row; gap: 8px; align-items: center; justify-content: center; width: 100%; }
+            .status-chip { font-size: 0.65rem; padding: 6px 10px; letter-spacing: 0.5px;}
+            .sandbox-toggle { font-size: 0.65rem; padding: 6px 10px; height: 34px; box-sizing: border-box; margin: 0; position: static; border-width: 1px; border-radius: 12px;}
+            .gear-btn { width: 34px; height: 34px; font-size: 1rem; }
             
             /* Enable Gear Dropdown, Disable Desktop Settings Panel */
             .gear-container { display: block; }
@@ -262,14 +274,19 @@
             
             .form-row { grid-template-columns: 1fr !important; min-width: 100% !important; width: 100%; gap: 12px; }
             .interactive-card { padding: 15px !important; }
-            
+
             .month-header-top { flex-direction: column; align-items: flex-start; }
             .month-stats { flex-direction: column; width: 100%; }
-            .cs-chip { justify-content: space-between; }
+            .cs-chip { justify-content: space-between; padding: 6px 10px;}
         }
         
         @media (max-width: 600px) {
             .debt-val-box { text-align: left !important; margin-top: 10px; width: 100%; }
+        }
+        
+        @media (max-width: 480px) {
+            .interactive-card, .table-container, .month-header-strip, .vault-card, .chart-wrapper, .debt-card { padding: 15px; }
+            .column-title { font-size: 1rem; }
         }
     </style>
 </head>
@@ -473,7 +490,7 @@
     const mortgageAnchorDate = new Date(2026, 4, 2, 12, 0, 0); 
     
     // ==========================================
-    // FULLY INTERACTIVE DATA STATE (V31 Update - App Calendar Grid)
+    // FULLY INTERACTIVE DATA STATE (V32 Update - Horizontal Mobile HUD)
     // ==========================================
     
     const defaultIncomes = [
@@ -515,11 +532,11 @@
 
     // LIVE STATE
     let isSandbox = false;
-    let realStartBal = parseFloat(localStorage.getItem('apexStartV31')) || 9000;
-    let realIncomes = JSON.parse(localStorage.getItem('apexIncV31')) || JSON.parse(JSON.stringify(defaultIncomes));
-    let realExpenses = JSON.parse(localStorage.getItem('apexExpV31')) || JSON.parse(JSON.stringify(defaultExpenses));
-    let realLedger = JSON.parse(localStorage.getItem('apexLedV31')) || JSON.parse(JSON.stringify(defaultLedger));
-    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV31')) || JSON.parse(JSON.stringify(defaultVaults));
+    let realStartBal = parseFloat(localStorage.getItem('apexStartV32')) || 9000;
+    let realIncomes = JSON.parse(localStorage.getItem('apexIncV32')) || JSON.parse(JSON.stringify(defaultIncomes));
+    let realExpenses = JSON.parse(localStorage.getItem('apexExpV32')) || JSON.parse(JSON.stringify(defaultExpenses));
+    let realLedger = JSON.parse(localStorage.getItem('apexLedV32')) || JSON.parse(JSON.stringify(defaultLedger));
+    let realVaults = JSON.parse(localStorage.getItem('apexVaultsV32')) || JSON.parse(JSON.stringify(defaultVaults));
     
     let startBal = realStartBal;
     let incomes = realIncomes;
@@ -548,10 +565,12 @@
     // SANDBOX MODE LOGIC
     function toggleSandbox() {
         isSandbox = !isSandbox;
+        const toggleBtn = document.querySelector('.sandbox-toggle');
         if(isSandbox) {
             document.body.classList.add('sandbox-mode');
             document.getElementById('sandbox-indicator').classList.remove('hidden');
             document.getElementById('sandbox-icon').innerText = "⏹";
+            toggleBtn.style.background = "#9333ea"; toggleBtn.style.color = "#fff";
             startBal = realStartBal;
             incomes = JSON.parse(JSON.stringify(realIncomes));
             expenses = JSON.parse(JSON.stringify(realExpenses));
@@ -561,6 +580,7 @@
             document.body.classList.remove('sandbox-mode');
             document.getElementById('sandbox-indicator').classList.add('hidden');
             document.getElementById('sandbox-icon').innerText = "▶";
+            toggleBtn.style.background = "#fff"; toggleBtn.style.color = "#9333ea";
             startBal = realStartBal;
             incomes = realIncomes;
             expenses = realExpenses;
@@ -573,11 +593,11 @@
     // DATA MANAGEMENT
     function saveData() {
         if(isSandbox) return; 
-        localStorage.setItem('apexStartV31', startBal);
-        localStorage.setItem('apexIncV31', JSON.stringify(incomes));
-        localStorage.setItem('apexExpV31', JSON.stringify(expenses));
-        localStorage.setItem('apexLedV31', JSON.stringify(customLedger));
-        localStorage.setItem('apexVaultsV31', JSON.stringify(vaults));
+        localStorage.setItem('apexStartV32', startBal);
+        localStorage.setItem('apexIncV32', JSON.stringify(incomes));
+        localStorage.setItem('apexExpV32', JSON.stringify(expenses));
+        localStorage.setItem('apexLedV32', JSON.stringify(customLedger));
+        localStorage.setItem('apexVaultsV32', JSON.stringify(vaults));
     }
     
     // Manual Save Button Logic
@@ -797,9 +817,9 @@
             return `
             <tr>
                 <td class="editable" onclick="editCustomDate(${i})" style="color: var(--text-sub); font-size: 0.8rem; font-weight:800; width:90px;">${c.date}</td>
-                <td class="editable" onclick="editCustomName(${i})"><span class="ev-custom" style="padding:4px 8px; border-radius:6px; font-size:0.7rem; font-weight:800; text-transform:uppercase;">${c.name}</span></td>
+                <td class="editable" onclick="editCustomName(${i})"><span class="ev-custom" style="padding:4px 6px; border-radius:6px; font-size:0.65rem; font-weight:800; text-transform:uppercase;">${c.name}</span></td>
                 <td class="editable" onclick="editCustomAmt(${i})" style="text-align:right; font-weight:800; color:var(--danger); font-size: 0.95rem; font-family: 'JetBrains Mono', monospace;">-$${c.amt.toLocaleString()}</td>
-                <td style="text-align:right; width:40px;"><button class="btn-danger" onclick="deleteCustom(${i})">✕</button></td>
+                <td style="text-align:right; width:30px;"><button class="btn-danger" onclick="deleteCustom(${i})">✕</button></td>
             </tr>`
         }).join('');
 
