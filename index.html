@@ -845,10 +845,10 @@
         }
     }
 
-    window.editExpDay = function(name) {
-        let exp = expenses.find(e => e.name === name);
+    window.editExpDay = function(index) {
+        let exp = expenses[index];
         if (exp) {
-            let d = prompt(`Update day for ${name} (1-31, or 'Weekly'):`, exp.day);
+            let d = prompt(`Update day for ${exp.name} (1-31, or 'Weekly'):`, exp.day);
             if (d !== null) {
                 if (d.toLowerCase() === 'weekly') {
                     exp.day = 'Weekly';
@@ -862,18 +862,18 @@
         }
     }
 
-    window.editExpName = function(oldName) {
-        let exp = expenses.find(e => e.name === oldName);
+    window.editExpName = function(index) {
+        let exp = expenses[index];
         if (exp) {
-            let n = prompt(`Update name for ${oldName}:`, exp.name);
+            let n = prompt(`Update name for ${exp.name}:`, exp.name);
             if (n !== null && n.trim() !== "") { exp.name = n; saveData(); runEngine(); }
         }
     }
 
-    window.editExpAmt = function(name) {
-        let exp = expenses.find(e => e.name === name);
+    window.editExpAmt = function(index) {
+        let exp = expenses[index];
         if (exp) {
-            let promptText = exp.day === "Weekly" ? `Update COMBINED MONTHLY total for ${name}:` : `Update monthly amount for ${name}:`;
+            let promptText = exp.day === "Weekly" ? `Update COMBINED MONTHLY total for ${exp.name}:` : `Update monthly amount for ${exp.name}:`;
             let n = prompt(promptText, exp.amt);
             if (n !== null && !isNaN(n)) { exp.amt = parseFloat(n); saveData(); runEngine(); }
         }
@@ -976,11 +976,11 @@
             if (a.day === "Weekly" && b.day !== "Weekly") return -1;
             if (a.day !== "Weekly" && b.day === "Weekly") return 1;
             return a.day - b.day;
-        }).map(e => `
+        }).map((e, i) => `
             <tr>
-                <td class="editable" onclick="editExpDay('${e.name}')" style="color: var(--text-sub); font-weight: 800;">${getOrdinal(e.day)}</td>
-                <td class="editable" onclick="editExpName('${e.name}')"><strong>${e.name}</strong></td>
-                <td style="text-align: right;" class="editable" onclick="editExpAmt('${e.name}')">-$${e.amt.toLocaleString()}</td>
+                <td class="editable" onclick="editExpDay(${i})" style="color: var(--text-sub); font-weight: 800;">${getOrdinal(e.day)}</td>
+                <td class="editable" onclick="editExpName(${i})"><strong>${e.name}</strong></td>
+                <td style="text-align: right;" class="editable" onclick="editExpAmt(${i})">-$${e.amt.toLocaleString()}</td>
             </tr>
         `).join('');
         list.innerHTML = `<tr style="background: rgba(251, 191, 36, 0.1);"><td style="color: var(--warning); font-weight: 800;">Starts May 2</td><td><strong>Mortgage (Bi-Wk)</strong></td><td style="text-align: right; color: var(--warning); font-weight: 800; font-family: 'JetBrains Mono', monospace;">-$1,574.50</td></tr>` + list.innerHTML;
@@ -999,33 +999,48 @@
         let baseIncStr = "$" + baseIncomeTotal.toLocaleString();
         document.getElementById('sum-inc').innerText = baseIncStr;
 
-        // ===== MONEY LEFT OVER PER MONTH (income minus every recurring expense) =====
-        let monthlySurplus = baseIncomeTotal - baseExpenseTotal;
+        // ===== MONEY LEFT OVER (live - reacts to injected AND removed custom data) =====
+        let recurringSurplus = baseIncomeTotal - baseExpenseTotal;   // stable "typical month"
         let nowD = new Date();
         let curMonth = nowD.getMonth() + 1, curYear = nowD.getFullYear();
-        let thisMonthOneOffs = customLedger.filter(c => {
+        let monthName = nowD.toLocaleString('default', {month: 'long'});
+
+        // custom-ledger entries that land inside the current calendar month
+        let thisMonthEntries = customLedger.filter(c => {
             let p = (c.date || "").split('-');
             return parseInt(p[0]) === curYear && parseInt(p[1]) === curMonth;
-        }).reduce((s, c) => s + (parseFloat(c.amt) || 0), 0);
-        let surplusAfterOneOffs = monthlySurplus - thisMonthOneOffs;
+        });
+        let thisMonthOneOffs = thisMonthEntries.reduce((s, c) => s + (parseFloat(c.amt) || 0), 0);
+        let otherMonthCount = customLedger.length - thisMonthEntries.length;
+
+        // headline = typical month minus everything injected for THIS month.
+        // Inject a custom entry and this drops; delete it and it climbs straight back.
+        let liveSurplus = recurringSurplus - thisMonthOneOffs;
+
+        let goodColor = "var(--success)", badColor = "var(--danger)";
+        let fmtMoney = (n) => (n >= 0 ? "+$" : "-$") + Math.abs(Math.round(n)).toLocaleString();
+
         let surplusEl = document.getElementById('sum-surplus');
         let surplusCard = document.getElementById('surplus-card');
         let surplusSub = document.getElementById('surplus-sub');
-        let goodColor = "var(--success)", badColor = "var(--danger)";
-        let fmtMoney = (n) => (n >= 0 ? "+$" : "-$") + Math.abs(Math.round(n)).toLocaleString();
-        let newSurplusStr = fmtMoney(monthlySurplus);
-        if(surplusEl && surplusEl.innerText !== newSurplusStr) { surplusEl.innerText = newSurplusStr; triggerPop('sum-surplus'); }
-        if(surplusEl)   surplusEl.style.color = monthlySurplus >= 0 ? goodColor : badColor;
-        if(surplusCard) surplusCard.style.borderLeftColor = monthlySurplus >= 0 ? goodColor : badColor;
+        if(surplusEl) {
+            let newSurplusStr = fmtMoney(liveSurplus);
+            if(surplusEl.innerText !== newSurplusStr) { surplusEl.innerText = newSurplusStr; triggerPop('sum-surplus'); }
+            surplusEl.style.color = liveSurplus >= 0 ? goodColor : badColor;
+        }
+        if(surplusCard) surplusCard.style.borderLeftColor = liveSurplus >= 0 ? goodColor : badColor;
         if(surplusSub) {
-            if(thisMonthOneOffs > 0) {
-                surplusSub.innerHTML = "Typical month: " + fmtMoney(monthlySurplus) + ". " +
-                    nowD.toLocaleString('default', {month: 'long'}) + " after one-off entries: " +
-                    "<strong style='color:" + (surplusAfterOneOffs >= 0 ? goodColor : badColor) + "'>" +
-                    fmtMoney(surplusAfterOneOffs) + "</strong>";
+            let bits = ["Typical month " + fmtMoney(recurringSurplus)];
+            if(thisMonthEntries.length > 0) {
+                bits.push(monthName + ": " + thisMonthEntries.length + " custom " +
+                    (thisMonthEntries.length === 1 ? "entry" : "entries") + " " + fmtMoney(-thisMonthOneOffs));
             } else {
-                surplusSub.innerText = "Income $" + baseIncomeTotal.toLocaleString() + "   -   Expenses $" + baseExpenseTotal.toLocaleString();
+                bits.push("no custom entries dated in " + monthName);
             }
+            if(otherMonthCount > 0) {
+                bits.push(otherMonthCount + " more dated other months (see Forecast)");
+            }
+            surplusSub.innerHTML = bits.join(" &middot; ");
         }
 
         vaults.forEach(v => v.saved = 0);
