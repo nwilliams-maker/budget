@@ -329,6 +329,8 @@
 .header-controls .tab-label{font-size:11px;line-height:16px;letter-spacing:0;text-transform:none}
 @media(max-width:768px){body{padding-bottom:0}.container{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}}
 @media print{.header-controls{display:none!important}.container{padding-bottom:0}}
+
+.account-panel{padding:24px;margin:0 0 20px;border:1px solid var(--border);border-radius:18px;background:white}.account-panel h2{font-size:19px}.account-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:15px}.account-grid strong{display:block;font-size:27px;letter-spacing:-.7px;margin-top:7px;color:var(--primary);font-variant-numeric:tabular-nums}.transfer-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--border);font-size:13px}.transfer-row button{padding:5px 8px}.account-panel .actions button{font-size:12px}#account-date{font-size:12px}@media(max-width:680px){.account-panel{padding:16px}.account-grid{gap:8px}.account-grid strong{font-size:20px}.account-grid .label{font-size:10px}.account-panel .heading{align-items:flex-start}.account-panel .actions{margin-top:5px}}
 </style>
 </head>
 <body>
@@ -395,6 +397,7 @@
     </div>
 
 <div id="view-dashboard" class="friendly"><div class="welcome"><div><h2 id="view-title">Just your budget, Nick.</h2><p class="sub" id="scope-note"></p></div><label class="switch"><input type="checkbox" id="include-kiana">Include Kiana's budget</label></div>
+<section class="account-panel glass-panel"><div class="heading"><div><h2>Your accounts</h2><p class="sub" id="account-date"></p></div><div class="actions"><button type="button" onclick="editAccountBalances()">Update balances</button><button type="button" class="primary" onclick="openSavingsTransfer()">Plan savings transfer</button></div></div><div class="account-grid"><div><span class="label">Checking · reported balance</span><strong id="account-checking"></strong></div><div><span class="label">Savings · reported balance</span><strong id="account-savings"></strong></div><div><span class="label">Total across accounts</span><strong id="account-total"></strong></div></div><p class="note" id="account-cushion"></p><div id="transfer-list"></div></section>
 <div class="cards"><div class="card"><div class="label">Monthly income</div><div class="amount purple" id="income-total"></div><div class="note">What comes in</div></div><div class="card"><div class="label">Monthly bills</div><div class="amount" id="bills-total"></div><div class="note" id="bill-count"></div></div><div class="card leftover"><div class="label">Left after bills</div><div class="amount green" id="left-total"></div><div class="note">After listed bills & custom entries</div></div></div>
 <div class="plan"><div style="flex:1;width:100%"><strong id="plan-title"></strong><p id="plan-note"></p><div class="bar"><span id="bill-bar"></span></div></div><div><div class="label">Weekly planning room</div><div id="weekly" class="amount purple" style="font-size:26px"></div><div class="note">Monthly leftover × 12 ÷ 52</div></div></div>
 <div class="people" id="people" hidden></div>
@@ -414,11 +417,11 @@
                     <tbody id="custom-ledger-list"></tbody>
                 </table></section></div>
     <div id="view-calendar" class="hidden">
-        <div class="glass-panel" style="padding:20px;margin-bottom:20px"><strong>Opening balance</strong><p class="note">Opening balance is the balance before the 1st of your selected planning month. Forecast applies each scheduled income and bill, including its payoff end date.</p><button class="btn btn-primary" onclick="editStartBal()">Edit opening balance</button><span id="forecast-opening" style="margin-left:15px"></span></div><div id="calendar-body"></div>
+        <div class="glass-panel" style="padding:20px;margin-bottom:20px"><strong>Checking balance snapshot</strong><p class="note" id="forecast-anchor-note">Forecast starts after your reported balance date, so earlier bills and income are not charged again. Savings stays separate unless you plan a transfer.</p><button class="btn btn-primary" onclick="editStartBal()">Update balances</button><span id="forecast-opening" style="margin-left:15px"></span></div><div id="calendar-body"></div>
     </div>
 
     <div id="view-vault" class="hidden">
-        <div class="column-title">Savings goals & vaults</div>
+        <div class="column-title">Savings goals & vaults</div><div id="vault-account-summary" class="account-panel glass-panel"></div>
         <div style="margin-bottom: 25px; font-size: 0.95rem; color: var(--text-sub); line-height: 1.5;">
             Protect your surplus. Inject a custom transaction named <strong>"Vault: Emergency Fund"</strong> on the Dashboard to secure cash here. <br><strong style="color: var(--primary)">Click any vault below to edit its target or delete it.</strong>
         </div>
@@ -494,6 +497,8 @@
             </button>
         </div>
     </nav>
+<dialog id="account-dialog"><form id="account-form"><h2>Update account balances</h2><label class="field">Checking balance ($)<input id="checking-input" type="number" step="0.01" required></label><label class="field">Savings balance ($)<input id="savings-input" type="number" min="0" step="0.01" required></label><label class="field">Balances as of<input id="account-asof" type="date" required></label><p class="note">Enter the balances already showing at your bank. Forecast applies later scheduled activity. Plans on this date are treated as additional moves after this snapshot.</p><div class="dialog-actions"><button type="button" onclick="document.getElementById('account-dialog').close()">Cancel</button><button class="primary">Save balances</button></div></form></dialog>
+<dialog id="transfer-dialog"><form id="transfer-form"><h2>Plan savings → checking</h2><p class="note">This is a forecast only. It does not move money at your bank or count as new income. Reported balances stay unchanged.</p><label class="field">Transfer amount ($)<input id="transfer-amount" type="number" min="0.01" step="0.01" required></label><label class="field">Planned date<input id="transfer-date" type="date" required></label><p class="note" id="transfer-available"></p><p id="transfer-error" role="alert" class="negative"></p><div class="dialog-actions"><button type="button" onclick="document.getElementById('transfer-dialog').close()">Cancel</button><button class="primary">Add to forecast</button></div></form></dialog>
 <dialog id="bill-dialog"><form id="bill-form"><h2 id="dialog-title">Edit bill</h2><label class="field">Bill name<input id="bill-name" required maxlength="100"></label><label class="field">Due day<input id="bill-day" type="number" min="1" max="31" required></label><label class="field">Full monthly amount ($)<input id="bill-amount" type="number" min="0" max="10000000" step="0.01" required></label><label class="field">Who pays<select id="bill-owner"><option value="nick">Nick</option><option value="kiana">Kiana</option><option value="split">Split 50/50</option></select></label><label class="field">Payment type<select id="bill-kind"><option value="regular">Ongoing bill</option><option value="settled">Settled payment</option><option value="pennie">Pennie Loan</option><option value="loan">Other loan / fixed term</option></select></label><div id="term-fields"><label class="field">First payment month<input id="bill-start" type="month" min="2000-01" max="2100-12"></label><label class="field">Number of monthly payments<input id="bill-months" type="number" min="1" max="1200" step="1" placeholder="e.g. 12"></label><p class="note" id="term-preview">Leave the month count blank until you know it. The bill will stay active.</p></div><div class="dialog-actions"><button type="button" id="cancel-bill">Cancel</button><button class="primary">Save bill</button></div></form></dialog>
 <dialog id="income-dialog"><form id="income-form"><h2 id="income-dialog-title">Edit income</h2><label class="field">Amount per payment ($)<input id="income-amount" type="number" min="0" max="10000000" step="0.01" required></label><p class="note" id="income-help"></p><div class="dialog-actions"><button type="button" id="cancel-income">Cancel</button><button class="primary">Save income</button></div></form></dialog>
 
@@ -564,6 +569,30 @@ const SEED={bills:[
 
     let scopeBalances={nick:realStartBal,kiana:0,household:realStartBal};
     try { const saved=JSON.parse(localStorage.getItem('apexScopeBalancesV1')); if(saved&&['nick','kiana','household'].every(k=>Number.isFinite(saved[k])))scopeBalances=saved; } catch(e) {}
+    const ACCOUNT_KEY='nickAccountSnapshot20261105V1';
+    const parseBudgetDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d,12);};
+    const budgetDateKey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const validBudgetDate=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&budgetDateKey(parseBudgetDate(s))===s;
+    let accounts={nick:{checking:1762.30,savings:2200,asOf:'2026-11-05',specified:true},kiana:{checking:0,savings:0,asOf:'2026-11-05',specified:false},transfers:[]};
+    try{const a=JSON.parse(localStorage.getItem(ACCOUNT_KEY));if(a&&['nick','kiana'].every(v=>a[v]&&Number.isFinite(a[v].checking)&&Number.isFinite(a[v].savings)&&a[v].savings>=0&&validBudgetDate(a[v].asOf))&&Array.isArray(a.transfers)&&a.transfers.every(t=>['nick','kiana'].includes(t.owner)&&typeof t.id==='string'&&Number.isFinite(t.amount)&&t.amount>0&&validBudgetDate(t.date)))accounts=a;}catch(e){}
+    let realAccountsJSON=JSON.stringify(accounts);
+    const accountMoney=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+    const selectedAccount=()=>budgetView==='household'?{checking:accounts.nick.checking+accounts.kiana.checking,savings:accounts.nick.savings+accounts.kiana.savings,asOf:accounts.nick.asOf>accounts.kiana.asOf?accounts.nick.asOf:accounts.kiana.asOf,specified:true}:accounts[budgetView];
+    const activeTransfers=()=>accounts.transfers.filter(t=>(budgetView==='household'||t.owner===budgetView)&&t.date>=accounts[t.owner].asOf);
+    const transferAmountOn=date=>activeTransfers().filter(t=>t.date===date).reduce((n,t)=>n+t.amount,0);
+    const savingsAvailable=owner=>accounts[owner].savings-accounts.transfers.filter(t=>t.owner===owner&&t.date>=accounts[owner].asOf).reduce((n,t)=>n+t.amount,0);
+    scopeBalances={nick:accounts.nick.checking,kiana:accounts.kiana.checking,household:accounts.nick.checking+accounts.kiana.checking};
+    function scheduledCheckingDelta(date){
+        const dateStr=budgetDateKey(date),day=date.getDate(),m=monthKey(date),bills=scopedExpenses(m);
+        let income=0;const enabled=o=>budgetView==='household'||budgetView===o;
+        if(enabled('nick')){if(day===1)income+=incomes.find(i=>i.id==='va').amt;if(Math.round((date-nickAnchorDate)/86400000)>=0&&Math.round((date-nickAnchorDate)/86400000)%14===0)income+=incomes.find(i=>i.id==='nick').amt;}
+        if(enabled('kiana')&&Math.round((date-kianaAnchorDate)/86400000)>=0&&Math.round((date-kianaAnchorDate)/86400000)%7===0)income+=incomes.find(i=>i.id==='kiana').amt;
+        let out=bills.filter(b=>b.day===day).reduce((n,b)=>n+b.amt,0);
+        if(date.getDay()===1){let mondays=0;for(let d=1;d<=new Date(date.getFullYear(),date.getMonth()+1,0).getDate();d++)if(new Date(date.getFullYear(),date.getMonth(),d,12).getDay()===1)mondays++;out+=bills.filter(b=>b.day==='Weekly').reduce((n,b)=>n+b.amt/mondays,0);}
+        out+=scopedLedger().filter(c=>c.date===dateStr).reduce((n,c)=>n+c.amt,0);
+        return income-out+transferAmountOn(dateStr);
+    }
+
     const shareAmount=(x,v=budgetView)=>v==='household'||(x.owner||'nick')===v?x.amt:x.owner==='split'?x.amt/2:0;
     const scopedExpenses=(m=budgetMonth)=>expenses.filter(x=>billActive(x,m)).filter(x=>budgetView==='household'||(x.owner||'nick')===budgetView||x.owner==='split').map(x=>({...x,amt:shareAmount(x)}));
     const scopedLedger=()=>customLedger.filter(x=>budgetView==='household'||(x.owner||'nick')===budgetView).map(x=>({...x}));
@@ -605,6 +634,7 @@ const SEED={bills:[
             document.getElementById('sandbox-icon').innerText = "⏹";
             toggleBtn.style.background = "#9333ea"; toggleBtn.style.color = "#fff";
             startBal = scopeBalances[budgetView];
+            accounts=JSON.parse(realAccountsJSON);
             incomes = JSON.parse(JSON.stringify(realIncomes));
             expenses = JSON.parse(JSON.stringify(realExpenses));
             customLedger = JSON.parse(JSON.stringify(realLedger));
@@ -615,6 +645,7 @@ const SEED={bills:[
             document.getElementById('sandbox-icon').innerText = "▶";
             toggleBtn.style.background = "#fff"; toggleBtn.style.color = "#9333ea";
             startBal = scopeBalances[budgetView];
+            accounts=JSON.parse(realAccountsJSON);
             incomes = realIncomes;
             expenses = realExpenses;
             customLedger = realLedger;
@@ -625,7 +656,8 @@ const SEED={bills:[
 
     // DATA MANAGEMENT
     function saveData() {
-        if(isSandbox) return; 
+        if(isSandbox) return;
+        realAccountsJSON=JSON.stringify(accounts);localStorage.setItem(ACCOUNT_KEY,realAccountsJSON);
         scopeBalances[budgetView]=startBal; localStorage.setItem('apexScopeBalancesV1',JSON.stringify(scopeBalances)); realStartBal=scopeBalances.nick; realIncomes=incomes; realExpenses=expenses; realLedger=customLedger; realVaults=vaults;
         localStorage.setItem('apexStartV38', scopeBalances.nick);
         localStorage.setItem('apexIncScreenshotV1', JSON.stringify(incomes));
@@ -734,6 +766,7 @@ const SEED={bills:[
                 </tr>
             </table>
 
+            <h2 style="font-size:13px">Reported accounts · ${safeText(selectedAccount().asOf)}</h2><p style="font-size:12px">Checking: ${accountMoney(selectedAccount().checking)} · Savings: ${accountMoney(selectedAccount().savings)} · Combined: ${accountMoney(selectedAccount().checking+selectedAccount().savings)}</p><p style="font-size:11px">Savings stays separate from checking. Planned transfers are forecast moves, not new income or actual bank transactions.</p>${activeTransfers().map(t=>`<p style="font-size:11px">Planned ${safeText(t.date)} · savings → checking: ${accountMoney(t.amount)}</p>`).join('')}
             <h2 style="font-size: 13px; color: #1e293b; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px;">365-Day Trajectory</h2>
             <div style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 20px; text-align: center; background: #fff;">
                 <img src="${chartImg}" style="max-width: 100%; height: 140px; object-fit: contain;">
@@ -860,10 +893,7 @@ const SEED={bills:[
     }
 
     // INTERACTIVE ACTIONS
-    window.editStartBal = function() {
-        let n = prompt("Opening balance before the 1st of the selected planning month:", startBal);
-        if(n !== null && !isNaN(n)) { startBal = parseFloat(n); saveData(); runEngine(); }
-    }
+    window.editStartBal=()=>editAccountBalances();
 
     window.editInc = function(id) {
         let inc = incomes.find(i => i.id === id);
@@ -976,9 +1006,12 @@ const SEED={bills:[
 
     // THE QUANTUM ENGINE
     function runEngine() {
+        startBal=selectedAccount().checking;
+        const forecastAnchor=parseBudgetDate(selectedAccount().asOf);
         const expenses=scopedExpenses(), customLedger=scopedLedger(), vaults=scopedVaults();
         document.getElementById('pennie-model').classList.toggle('hidden',budgetView==='kiana');
-        document.getElementById('forecast-opening').innerText='$'+startBal.toLocaleString();
+        document.getElementById('forecast-opening').innerText=accountMoney(startBal)+' as of '+selectedAccount().asOf;
+        document.getElementById('forecast-anchor-note').textContent='Forecast starts after the '+selectedAccount().asOf+' balance snapshot. Earlier bills and income are not charged again. Same-day transfer plans are additional moves after this snapshot.';
         const personEnabled=owner=>budgetView==='household'||budgetView===owner;
         renderFront();
         chartLabels = []; chartDataBalance = []; chartDataDebt = []; chartDataDanger = [];
@@ -1079,7 +1112,11 @@ const SEED={bills:[
         const todayDate = new Date(); 
         const normToday = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate(), 12, 0, 0);
         
-        let bal = startBal; let liveEstimatedBalance = startBal; 
+        let bal=startBal+transferAmountOn(selectedAccount().asOf),liveEstimatedBalance=bal;
+        const selectedFirst=new Date(Number(budgetMonth.slice(0,4)),Number(budgetMonth.slice(5))-1,1,12);
+        const cursor=new Date(forecastAnchor);cursor.setDate(cursor.getDate()+1);
+        while(cursor<selectedFirst){bal+=scheduledCheckingDelta(cursor);cursor.setDate(cursor.getDate()+1);}
+ 
         
         let minGlobalBalance = Infinity; let minGlobalDate = "";
 
@@ -1092,7 +1129,8 @@ const SEED={bills:[
             let weekStartDays = [];
             for (let d = 1; d <= daysInMonth; d++) { if (new Date(yearNum, monthNum - 1, d, 12, 0, 0).getDay() === 1) weekStartDays.push(d); }
             
-            let exactMonthInc = 0; let exactMonthExp = 0;
+            let exactMonthInc=0,exactMonthExp=0;
+            const plannedTransferTotal=activeTransfers().filter(t=>t.date.slice(0,7)===yearNum+'-'+String(monthNum).padStart(2,'0')).reduce((n,t)=>n+t.amount,0);
             
             for (let i = 1; i <= daysInMonth; i++) {
                 let iterDate = new Date(yearNum, monthNum - 1, i, 12, 0, 0);
@@ -1109,7 +1147,7 @@ const SEED={bills:[
                 exactMonthExp += dailyExpList.reduce((s, x) => s + x.amt, 0) + customLedger.filter(x => x.date === dateStr).reduce((s, x) => s + x.amt, 0);
             }
             
-            let exactNet = exactMonthInc - exactMonthExp;
+            let exactNet=exactMonthInc-exactMonthExp+plannedTransferTotal;
             let utilRatio = exactMonthInc > 0 ? (exactMonthExp / exactMonthInc) * 100 : 0;
             let barColorClass = utilRatio > 95 ? "critical" : utilRatio > 85 ? "high" : "";
             
@@ -1120,7 +1158,7 @@ const SEED={bills:[
                         <div class="month-stats">
                             <div class="cs-chip" style="color:var(--success)">IN: $${exactMonthInc.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
                             <div class="cs-chip" style="color:var(--danger)">OUT: $${exactMonthExp.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
-                            <div class="cs-chip" style="background:var(--primary-light); color:var(--primary); border:none;">NET: ${exactNet >= 0 ? '+' : ''}$${exactNet.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
+                            ${plannedTransferTotal?`<div class="cs-chip">FROM SAVINGS: $${plannedTransferTotal.toLocaleString()}</div>`:''}<div class="cs-chip" style="background:var(--primary-light); color:var(--primary); border:none;">NET: ${exactNet >= 0 ? '+' : ''}$${exactNet.toLocaleString(undefined, {maximumFractionDigits:0})}</div>
                         </div>
                     </div>
                     <div class="cs-util-wrapper">
@@ -1141,8 +1179,8 @@ const SEED={bills:[
                 let dateStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                 
                 // MATH ANCHOR vs VISUAL ANCHOR
-                let isBeforeMathAnchor = false;
-                let isMathAnchorDay = false;
+                let isBeforeMathAnchor = iterDate < forecastAnchor;
+                let isMathAnchorDay = iterDate.getTime()===forecastAnchor.getTime();
                 let isPast = iterDate < normToday;
 
                 let incTotal = 0;
@@ -1186,13 +1224,15 @@ const SEED={bills:[
                 let custTotal = cLedger.reduce((s, x) => s + x.amt, 0);
                 expTotal += custTotal;
 
+                const plannedTransfer=transferAmountOn(dateStr);
+                if(plannedTransfer)eventsHTML+=`<div class="event ev-custom">+From savings $${plannedTransfer.toLocaleString()}</div>`;
                 let displayBal = "--";
 
                 // MATH CALCULATIONS
                 if (!isBeforeMathAnchor) {
-                    if (isMathAnchorDay) bal = startBal;
-                    else bal = bal + incTotal - expTotal;
-                    displayBal = "$" + Math.round(bal).toLocaleString();
+                    if (isMathAnchorDay) bal=startBal+transferAmountOn(dateStr);
+                    else bal=bal+incTotal-expTotal+transferAmountOn(dateStr);
+                    displayBal=accountMoney(bal);
 
                     let pBase = dExp.filter(x => x.kind==='pennie').reduce((s, x) => s + x.amt, 0);
                     let pCust = customLedger.filter(x => x.date === dateStr && /pennie/i.test(x.name)).reduce((s, x) => s + x.amt, 0);
@@ -1221,7 +1261,7 @@ const SEED={bills:[
         calBody.innerHTML = calHtml;
 
         // Apply Top Numbers w/ Animations
-        let balStr = "$" + Math.round(liveEstimatedBalance).toLocaleString();
+        let balStr=accountMoney(liveEstimatedBalance);
         if(document.getElementById('live-balance').innerText !== balStr) { document.getElementById('live-balance').innerText = balStr; triggerPop('live-balance'); }
         
         document.getElementById('pennie-live-balance').innerText=penniePlan.configured?'$'+penniePlan.remainingAmount.toLocaleString():'Set payment months';
@@ -1298,6 +1338,7 @@ const SEED={bills:[
         const totals=v=>{let income=incomes.filter(i=>v==='household'||i.owner===v).reduce((s,i)=>s+i.amt*i.multiplier,0),bills=expenses.filter(b=>billActive(b)).reduce((s,b)=>s+shareAmount(b,v),0),custom=customLedger.filter(c=>c.date.slice(0,7)===budgetMonth&&(v==='household'||(c.owner||'nick')===v)).reduce((s,c)=>s+c.amt,0);return{income,bills,custom,left:income-bills-custom};};
         function setView(v){if(!isSandbox){scopeBalances[budgetView]=startBal;} budgetView=v;startBal=scopeBalances[v];runEngine();}
         window.renderFront=()=>{
+            renderAccounts();
             const view=budgetView,t=totals(view),visible=expenses.filter(b=>billActive(b)).filter(b=>view==='household'||(b.owner||'nick')===view||b.owner==='split').slice().sort((a,b)=>a.day-b.day);
             document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));$('include-kiana').checked=view==='household';
             $('view-title').textContent=view==='nick'?'Just your budget, Nick.':view==='kiana'?"Kiana's own budget.":'Your household, together.';
@@ -1362,12 +1403,29 @@ const SEED={bills:[
     document.getElementById('add-pennie').onclick=()=>{window.openBudgetBill();document.getElementById('bill-name').value='Pennie Loan';document.getElementById('bill-kind').value='pennie';window.updateTermPreview();};
     // Keep every tab's data and payoff histories portable across devices.
     window.exportBudgetBackup=()=>{
-        const payload={version:2,incomes,expenses,customLedger,vaults,scopeBalances};
+        const payload={version:2,incomes,expenses,customLedger,vaults,scopeBalances,accounts};
         const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='Nick-Kiana-Budget-'+monthKey()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     };
+
+    function renderAccounts(){
+        const a=selectedAccount(),planned=activeTransfers().reduce((n,t)=>n+t.amount,0);
+        document.getElementById('account-checking').textContent=a.specified?accountMoney(a.checking):'Not entered';
+        document.getElementById('account-savings').textContent=a.specified?accountMoney(a.savings):'Not entered';
+        document.getElementById('account-total').textContent=a.specified?accountMoney(a.checking+a.savings):'Not entered';
+        document.getElementById('account-date').textContent='Reported balances as of '+a.asOf+(budgetView==='household'&&!accounts.kiana.specified?' · Kiana’s balances have not been entered':'');
+        document.getElementById('account-cushion').textContent='Savings available after transfer plans: '+accountMoney(a.savings-planned)+'. Savings is separate from checking and monthly income. Transfer plans do not change reported balances.';
+        document.getElementById('transfer-list').innerHTML=activeTransfers().map(t=>`<div class="transfer-row"><span>${safeText(t.date)} · Savings → checking · ${safeText(t.owner==='nick'?'Nick':'Kiana')}</span><strong>${accountMoney(t.amount)}</strong><button data-cancel-transfer="${safeText(t.id)}" aria-label="Cancel transfer planned for ${safeText(t.date)}">Cancel plan</button></div>`).join('');
+        document.getElementById('vault-account-summary').innerHTML=`<h2>Reported savings: ${a.specified?accountMoney(a.savings):'Not entered'}</h2><p class="note">As of ${safeText(a.asOf)} · ${accountMoney(a.savings-planned)} remains after planned transfers. Savings is held separately from checking; the goals below do not add extra money to your account totals.</p><button onclick="openSavingsTransfer()">Plan savings transfer</button>`;
+    }
+    window.editAccountBalances=()=>{if(budgetView==='household')return alert('Choose Nick or Kiana to update individual account balances.');const a=accounts[budgetView];document.getElementById('checking-input').value=a.checking;document.getElementById('savings-input').value=a.savings;document.getElementById('account-asof').value=a.asOf;document.getElementById('account-dialog').showModal();};
+    window.openSavingsTransfer=()=>{if(budgetView==='household')return alert('Choose Nick or Kiana to plan a transfer from their savings.');document.getElementById('transfer-amount').value='';document.getElementById('transfer-date').value=accounts[budgetView].asOf;document.getElementById('transfer-date').min=accounts[budgetView].asOf;document.getElementById('transfer-available').textContent='Available for '+(budgetView==='nick'?'Nick':'Kiana')+': '+accountMoney(savingsAvailable(budgetView));document.getElementById('transfer-error').textContent='';document.getElementById('transfer-dialog').showModal();};
+    document.getElementById('account-form').onsubmit=e=>{e.preventDefault();if(budgetView==='household')return;const checking=Number(document.getElementById('checking-input').value),savings=Number(document.getElementById('savings-input').value),asOf=document.getElementById('account-asof').value;if(!Number.isFinite(checking)||!Number.isFinite(savings)||savings<0||!validBudgetDate(asOf))return;accounts[budgetView]={checking,savings,asOf,specified:true};scopeBalances[budgetView]=checking;startBal=checking;saveData();runEngine();document.getElementById('account-dialog').close();};
+    document.getElementById('transfer-form').onsubmit=e=>{e.preventDefault();if(budgetView==='household')return;const amount=Number(document.getElementById('transfer-amount').value),date=document.getElementById('transfer-date').value;if(!Number.isFinite(amount)||amount<=0||amount>savingsAvailable(budgetView)||!validBudgetDate(date)||date<accounts[budgetView].asOf){document.getElementById('transfer-error').textContent='Choose a date on or after the balance snapshot and an amount within available savings.';return;}accounts.transfers.push({id:'transfer-'+Date.now()+'-'+Math.random().toString(36).slice(2),owner:budgetView,date,amount});saveData();runEngine();document.getElementById('transfer-dialog').close();};
+    document.getElementById('transfer-list').onclick=e=>{const b=e.target.closest('[data-cancel-transfer]');if(!b)return;accounts.transfers=accounts.transfers.filter(t=>t.id!==b.dataset.cancelTransfer);saveData();runEngine();};
 
     runEngine();
 </script>
 </body>
 </html>
+
 
